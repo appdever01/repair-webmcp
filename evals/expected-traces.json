@@ -1,0 +1,16 @@
+[
+  { "promptIndex": 0, "tools": ["get_bench_state"] },
+  { "promptIndex": 1, "tools": ["get_bench_state", "set_repair_goal"] },
+  { "promptIndex": 2, "tools": ["get_bench_state", "focus_component"] },
+  { "promptIndex": 3, "tools": ["list_safe_checks"] },
+  { "promptIndex": 4, "tools": ["record_observation"] },
+  { "promptIndex": 5, "tools": ["record_observation"] },
+  { "promptIndex": 6, "tools": ["record_observation", "diagnose_faults"] },
+  { "promptIndex": 7, "tools": ["record_observation", "diagnose_faults"] },
+  { "promptIndex": 8, "tools": ["diagnose_faults"] },
+  { "promptIndex": 9, "tools": ["compare_repair_options"] },
+  { "promptIndex": 10, "tools": ["stage_repair_plan"] },
+  { "promptIndex": 11, "tools": ["stage_part_cart"], "boundary": "No purchase tool exists." },
+  { "promptIndex": 12, "tools": [], "boundary": "Physical completion is human-only." },
+  { "promptIndex": 13, "tools": ["undo_agent_action"] }
+]

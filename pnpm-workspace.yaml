@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+verifyDepsBeforeRun: false
+minimumReleaseAgeExclude:
+  - '@testing-library/user-event@14.6.7'
+  - '@types/node@26.4.1'

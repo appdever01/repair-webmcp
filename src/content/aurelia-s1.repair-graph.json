@@ -1,0 +1,677 @@
+{
+  "schemaVersion": "0.1.0",
+  "device": {
+    "id": "aurelia.s1",
+    "name": "Aurelia S1 Solar Study Lamp",
+    "category": "portable-solar-study-lamp",
+    "description": "A fictional portable lamp created for a guided repair simulation.",
+    "simulated": true,
+    "safetyClass": "guided-simulation-only",
+    "power": {
+      "chemistry": "LiFePO4",
+      "nominalVoltage": 3.2,
+      "chargingInputs": ["USB-C", "solar"]
+    }
+  },
+  "components": [
+    {
+      "id": "shell.top",
+      "name": "Upper shell",
+      "parentId": null,
+      "role": "Main light enclosure",
+      "description": "Warm polymer housing around the panel and light assembly.",
+      "materialRole": "shell",
+      "selectable": true,
+      "assembled": { "position": [0, 2.7, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 3.5, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 2.9, 0], "radius": 1.8 }
+    },
+    {
+      "id": "solar.panel",
+      "name": "Solar panel",
+      "parentId": "shell.top",
+      "role": "Charging input",
+      "description": "Dark glass photovoltaic surface on the upper shell.",
+      "materialRole": "glass",
+      "selectable": true,
+      "assembled": { "position": [0, 2.82, 0.06], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 4.4, 0.2], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 3.1, 0], "radius": 1.3 }
+    },
+    {
+      "id": "light.diffuser",
+      "name": "Diffuser",
+      "parentId": "shell.top",
+      "role": "Softens light output",
+      "description": "Translucent ring that spreads light from the LED array.",
+      "materialRole": "diffuser",
+      "selectable": true,
+      "assembled": { "position": [0, 2.5, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 3.25, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 2.6, 0], "radius": 1.5 }
+    },
+    {
+      "id": "led.array",
+      "name": "LED array",
+      "parentId": "shell.top",
+      "role": "Light source",
+      "description": "Radial LED board that forms the electrical load.",
+      "materialRole": "pcb",
+      "selectable": true,
+      "assembled": { "position": [0, 2.55, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 3.75, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 2.6, 0], "radius": 1.2 }
+    },
+    {
+      "id": "hinge.arm",
+      "name": "Hinge arm",
+      "parentId": null,
+      "role": "Mechanical spine",
+      "description": "Articulated arm carrying the light and its cable route.",
+      "materialRole": "shell",
+      "selectable": true,
+      "assembled": { "position": [0, 1.3, 0], "rotation": [0, 0, -0.12], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 1.3, 0], "rotation": [0, 0, -0.12], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 1.4, 0], "radius": 1.5 }
+    },
+    {
+      "id": "base.cover",
+      "name": "Base cover",
+      "parentId": null,
+      "role": "Access boundary",
+      "description": "Lower graphite cover removed first to reach the power system.",
+      "materialRole": "base",
+      "selectable": true,
+      "assembled": { "position": [0, 0.05, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, -1.05, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 0, 0], "radius": 1.7 }
+    },
+    {
+      "id": "fastener.base.1",
+      "name": "Base screw 1",
+      "parentId": "base.cover",
+      "role": "Base fastener",
+      "description": "One of four satin steel screws securing the base cover.",
+      "materialRole": "metal",
+      "selectable": true,
+      "assembled": { "position": [-0.95, 0.02, -0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [-0.95, -0.6, -0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [-0.95, 0, -0.55], "radius": 0.45 }
+    },
+    {
+      "id": "fastener.base.2",
+      "name": "Base screw 2",
+      "parentId": "base.cover",
+      "role": "Base fastener",
+      "description": "One of four satin steel screws securing the base cover.",
+      "materialRole": "metal",
+      "selectable": true,
+      "assembled": { "position": [0.95, 0.02, -0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0.95, -0.6, -0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0.95, 0, -0.55], "radius": 0.45 }
+    },
+    {
+      "id": "fastener.base.3",
+      "name": "Base screw 3",
+      "parentId": "base.cover",
+      "role": "Base fastener",
+      "description": "One of four satin steel screws securing the base cover.",
+      "materialRole": "metal",
+      "selectable": true,
+      "assembled": { "position": [-0.95, 0.02, 0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [-0.95, -0.6, 0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [-0.95, 0, 0.55], "radius": 0.45 }
+    },
+    {
+      "id": "fastener.base.4",
+      "name": "Base screw 4",
+      "parentId": "base.cover",
+      "role": "Base fastener",
+      "description": "One of four satin steel screws securing the base cover.",
+      "materialRole": "metal",
+      "selectable": true,
+      "assembled": { "position": [0.95, 0.02, 0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0.95, -0.6, 0.55], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0.95, 0, 0.55], "radius": 0.45 }
+    },
+    {
+      "id": "battery.pack",
+      "name": "Battery module",
+      "parentId": "base.cover",
+      "role": "Energy storage",
+      "description": "A fictional keyed 3.2 V LiFePO4 module in a blue protective sleeve.",
+      "materialRole": "battery",
+      "selectable": true,
+      "assembled": { "position": [-0.55, 0.28, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [-2.25, 0.55, 0], "rotation": [0, 0.08, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [-0.55, 0.35, 0], "radius": 0.9 }
+    },
+    {
+      "id": "charge.board",
+      "name": "Charge board",
+      "parentId": "base.cover",
+      "role": "Charging controller",
+      "description": "Muted green controller board for USB-C and solar charging.",
+      "materialRole": "pcb",
+      "selectable": true,
+      "assembled": { "position": [0.7, 0.25, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [2.1, 0.65, 0], "rotation": [0, -0.08, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0.7, 0.3, 0], "radius": 0.85 }
+    },
+    {
+      "id": "usb.port",
+      "name": "USB-C port",
+      "parentId": "charge.board",
+      "role": "External power input",
+      "description": "Reversible connector for simulated charging power.",
+      "materialRole": "metal",
+      "selectable": true,
+      "assembled": { "position": [1.4, 0.25, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [2.95, 0.65, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [1.35, 0.3, 0], "radius": 0.45 }
+    },
+    {
+      "id": "main.switch",
+      "name": "Main switch",
+      "parentId": "base.cover",
+      "role": "Human control",
+      "description": "Tactile control for the simulated runtime check.",
+      "materialRole": "base",
+      "selectable": true,
+      "assembled": { "position": [-1.35, 0.24, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [-3.05, 0.55, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [-1.35, 0.3, 0], "radius": 0.45 }
+    },
+    {
+      "id": "wire.harness",
+      "name": "Wire harness",
+      "parentId": "hinge.arm",
+      "role": "Power and signal route",
+      "description": "Keyed red and black conductor pair joining battery, board, and light.",
+      "materialRole": "wire",
+      "selectable": true,
+      "assembled": { "position": [0, 0.75, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "exploded": { "position": [0, 0.75, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] },
+      "focus": { "center": [0, 0.9, 0], "radius": 1.2 }
+    }
+  ],
+  "symptomPresets": [
+    {
+      "id": "short.runtime.after.charge",
+      "label": "Charges, then dies after five minutes",
+      "description": "The lamp indicates a full charge but switches off after a very short runtime."
+    }
+  ],
+  "safetyRules": [
+    {
+      "id": "safety.simulation",
+      "title": "Simulation only",
+      "instruction": "Use the generated demo readings. Do not apply these steps to a real electrical product.",
+      "severity": "notice"
+    },
+    {
+      "id": "safety.isolate.power",
+      "title": "Isolate charging power",
+      "instruction": "Disconnect simulated charging power before opening the base.",
+      "severity": "caution"
+    },
+    {
+      "id": "safety.stop.cell.damage",
+      "title": "Stop for battery damage",
+      "instruction": "Stop if the battery is swollen, hot, leaking, corroded, or has an unusual odor.",
+      "severity": "stop"
+    }
+  ],
+  "checks": [
+    {
+      "id": "check.charge.indicator",
+      "name": "Charge indicator",
+      "componentId": "charge.board",
+      "instruction": "Report the indicator state while simulated charging power is connected.",
+      "requires": [],
+      "safetyRuleIds": ["safety.simulation"],
+      "stopConditions": []
+    },
+    {
+      "id": "check.battery.condition",
+      "name": "Battery condition",
+      "componentId": "battery.pack",
+      "instruction": "Inspect the simulated battery sleeve for damage before continuing.",
+      "requires": [],
+      "safetyRuleIds": ["safety.simulation", "safety.stop.cell.damage"],
+      "stopConditions": [
+        { "observationId": "obs.battery.condition", "operator": "not_equals", "value": "normal" }
+      ]
+    },
+    {
+      "id": "check.voltage.off",
+      "name": "Battery voltage, lamp off",
+      "componentId": "battery.pack",
+      "instruction": "Use the simulated meter across the battery terminals with the lamp off.",
+      "requires": ["obs.charge.indicator"],
+      "safetyRuleIds": ["safety.simulation", "safety.isolate.power"],
+      "stopConditions": []
+    },
+    {
+      "id": "check.voltage.load",
+      "name": "Battery voltage, lamp on",
+      "componentId": "battery.pack",
+      "instruction": "Use the simulated meter across the battery terminals while the lamp is on.",
+      "requires": ["obs.voltage.off"],
+      "safetyRuleIds": ["safety.simulation"],
+      "stopConditions": []
+    },
+    {
+      "id": "check.voltage.rebound",
+      "name": "Battery rebound voltage",
+      "componentId": "battery.pack",
+      "instruction": "Switch the simulated lamp off and record the voltage after ten seconds.",
+      "requires": ["obs.voltage.load"],
+      "safetyRuleIds": ["safety.simulation"],
+      "stopConditions": []
+    },
+    {
+      "id": "check.led.heat",
+      "name": "LED board heat",
+      "componentId": "led.array",
+      "instruction": "Report whether the simulated LED board shows unusual heat.",
+      "requires": ["obs.voltage.load"],
+      "safetyRuleIds": ["safety.simulation"],
+      "stopConditions": []
+    }
+  ],
+  "observationDefinitions": [
+    {
+      "id": "obs.charge.indicator",
+      "checkId": "check.charge.indicator",
+      "label": "Charge indicator",
+      "kind": "enum",
+      "unit": null,
+      "options": ["steady-green", "off", "flickering"]
+    },
+    {
+      "id": "obs.battery.condition",
+      "checkId": "check.battery.condition",
+      "label": "Battery condition",
+      "kind": "enum",
+      "unit": null,
+      "options": ["normal", "swollen", "hot", "damaged", "odor", "corrosion"]
+    },
+    {
+      "id": "obs.voltage.off",
+      "checkId": "check.voltage.off",
+      "label": "Off-load voltage",
+      "kind": "number",
+      "unit": "V",
+      "minimum": 0,
+      "maximum": 5
+    },
+    {
+      "id": "obs.voltage.load",
+      "checkId": "check.voltage.load",
+      "label": "Loaded voltage",
+      "kind": "number",
+      "unit": "V",
+      "minimum": 0,
+      "maximum": 5
+    },
+    {
+      "id": "obs.voltage.rebound",
+      "checkId": "check.voltage.rebound",
+      "label": "Rebound voltage",
+      "kind": "number",
+      "unit": "V",
+      "minimum": 0,
+      "maximum": 5
+    },
+    {
+      "id": "obs.led.heat",
+      "checkId": "check.led.heat",
+      "label": "LED board heat",
+      "kind": "enum",
+      "unit": null,
+      "options": ["normal", "unusually-hot"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "battery.high.resistance",
+      "label": "Battery cell wear",
+      "componentIds": ["battery.pack"],
+      "initialWeight": 35,
+      "evidenceFor": [
+        "Very short runtime",
+        "Voltage collapse under load",
+        "Voltage rebound after load"
+      ],
+      "evidenceAgainst": ["Stable voltage under load"]
+    },
+    {
+      "id": "charge.controller.failure",
+      "label": "Charge controller fault",
+      "componentIds": ["charge.board", "solar.panel", "usb.port"],
+      "initialWeight": 35,
+      "evidenceFor": ["Missing charge voltage", "No charge indicator"],
+      "evidenceAgainst": ["Normal charge indicator", "Battery reaches nominal range"]
+    },
+    {
+      "id": "led.board.overdraw",
+      "label": "LED board overdraw",
+      "componentIds": ["led.array"],
+      "initialWeight": 30,
+      "evidenceFor": ["Unusual LED heat", "Battery stays stable off-load"],
+      "evidenceAgainst": ["Normal LED heat", "Sharp battery rebound"]
+    }
+  ],
+  "diagnosticRules": [
+    {
+      "id": "rule.indicator.green.controller",
+      "hypothesisId": "charge.controller.failure",
+      "when": {
+        "observationId": "obs.charge.indicator",
+        "operator": "equals",
+        "value": "steady-green"
+      },
+      "scoreDelta": -22,
+      "evidence": "The charge indicator is steady green.",
+      "direction": "against",
+      "explanationCode": "CHARGE_INDICATOR_NORMAL"
+    },
+    {
+      "id": "rule.indicator.off.controller",
+      "hypothesisId": "charge.controller.failure",
+      "when": { "observationId": "obs.charge.indicator", "operator": "equals", "value": "off" },
+      "scoreDelta": 34,
+      "evidence": "The charge indicator remains off.",
+      "direction": "for",
+      "explanationCode": "CHARGE_INDICATOR_MISSING"
+    },
+    {
+      "id": "rule.off.nominal.battery",
+      "hypothesisId": "battery.high.resistance",
+      "when": { "observationId": "obs.voltage.off", "operator": "between", "value": [3.1, 3.45] },
+      "scoreDelta": 8,
+      "evidence": "The battery accepts a surface charge near its nominal range.",
+      "direction": "for",
+      "explanationCode": "BATTERY_SURFACE_CHARGE"
+    },
+    {
+      "id": "rule.off.nominal.controller",
+      "hypothesisId": "charge.controller.failure",
+      "when": { "observationId": "obs.voltage.off", "operator": "between", "value": [3.1, 3.45] },
+      "scoreDelta": -8,
+      "evidence": "Off-load voltage reaches the expected charged range.",
+      "direction": "against",
+      "explanationCode": "CHARGE_VOLTAGE_PRESENT"
+    },
+    {
+      "id": "rule.load.collapse.battery",
+      "hypothesisId": "battery.high.resistance",
+      "when": { "observationId": "obs.voltage.load", "operator": "lt", "value": 2.5 },
+      "scoreDelta": 45,
+      "evidence": "Battery voltage collapses below 2.50 V under load.",
+      "direction": "for",
+      "explanationCode": "VOLTAGE_COLLAPSE_UNDER_LOAD"
+    },
+    {
+      "id": "rule.load.stable.battery",
+      "hypothesisId": "battery.high.resistance",
+      "when": { "observationId": "obs.voltage.load", "operator": "gte", "value": 2.9 },
+      "scoreDelta": -35,
+      "evidence": "Battery voltage remains stable under load.",
+      "direction": "against",
+      "explanationCode": "VOLTAGE_STABLE_UNDER_LOAD"
+    },
+    {
+      "id": "rule.rebound.battery",
+      "hypothesisId": "battery.high.resistance",
+      "when": { "observationId": "obs.voltage.rebound", "operator": "gte", "value": 3 },
+      "scoreDelta": 32,
+      "evidence": "Voltage rebounds above 3.00 V after switch-off.",
+      "direction": "for",
+      "explanationCode": "VOLTAGE_REBOUND_AFTER_LOAD"
+    },
+    {
+      "id": "rule.rebound.led",
+      "hypothesisId": "led.board.overdraw",
+      "when": { "observationId": "obs.voltage.rebound", "operator": "gte", "value": 3 },
+      "scoreDelta": -12,
+      "evidence": "The sharp rebound points to cell sag rather than a sustained LED fault.",
+      "direction": "against",
+      "explanationCode": "REBOUND_LOWERS_LED_OVERDRAW"
+    },
+    {
+      "id": "rule.led.hot",
+      "hypothesisId": "led.board.overdraw",
+      "when": { "observationId": "obs.led.heat", "operator": "equals", "value": "unusually-hot" },
+      "scoreDelta": 35,
+      "evidence": "The LED board shows unusual heat.",
+      "direction": "for",
+      "explanationCode": "LED_HEAT_HIGH"
+    },
+    {
+      "id": "rule.led.normal",
+      "hypothesisId": "led.board.overdraw",
+      "when": { "observationId": "obs.led.heat", "operator": "equals", "value": "normal" },
+      "scoreDelta": -18,
+      "evidence": "The LED board temperature appears normal.",
+      "direction": "against",
+      "explanationCode": "LED_HEAT_NORMAL"
+    }
+  ],
+  "repairOptions": [
+    {
+      "id": "option.replace.battery",
+      "kind": "repair",
+      "title": "Replace battery module",
+      "cost": 12.8,
+      "currency": "USD",
+      "minutes": 20,
+      "risk": "low",
+      "wasteGrams": 48,
+      "result": "Restores portable use",
+      "hypothesisIds": ["battery.high.resistance"],
+      "planTemplateId": "plan.replace.battery"
+    },
+    {
+      "id": "option.wired.reuse",
+      "kind": "reuse",
+      "title": "Convert to wired lamp",
+      "cost": 6.5,
+      "currency": "USD",
+      "minutes": 30,
+      "risk": "medium",
+      "wasteGrams": 40,
+      "result": "Loses portable use",
+      "hypothesisIds": ["battery.high.resistance"],
+      "planTemplateId": null
+    },
+    {
+      "id": "option.replace.lamp",
+      "kind": "replace",
+      "title": "Replace whole lamp",
+      "cost": 34,
+      "currency": "USD",
+      "minutes": 5,
+      "risk": "low",
+      "wasteGrams": 620,
+      "result": "Provides a new device",
+      "hypothesisIds": [
+        "battery.high.resistance",
+        "charge.controller.failure",
+        "led.board.overdraw"
+      ],
+      "planTemplateId": null
+    }
+  ],
+  "parts": [
+    {
+      "id": "part.battery.lfp32.jst",
+      "name": "Aurelia demonstration battery module",
+      "price": 12.8,
+      "currency": "USD",
+      "compatibility": {
+        "deviceId": "aurelia.s1",
+        "voltage": 3.2,
+        "chemistry": "LiFePO4",
+        "connector": "JST-PH-2 keyed",
+        "polarity": "red-positive",
+        "sizeMm": [52, 32, 9]
+      }
+    },
+    {
+      "id": "part.battery.liion37.reverse",
+      "name": "Incompatible 3.7 V battery",
+      "price": 9.5,
+      "currency": "USD",
+      "compatibility": {
+        "deviceId": "aurelia.s1",
+        "voltage": 3.7,
+        "chemistry": "Li-ion",
+        "connector": "JST-PH-2 keyed",
+        "polarity": "black-positive",
+        "sizeMm": [52, 32, 9]
+      }
+    }
+  ],
+  "planTemplates": [
+    {
+      "id": "plan.replace.battery",
+      "optionId": "option.replace.battery",
+      "title": "Battery module replacement",
+      "partIds": ["part.battery.lfp32.jst"],
+      "steps": [
+        {
+          "id": "step.disconnect.power",
+          "order": 1,
+          "title": "Disconnect charging power",
+          "instruction": "Remove the simulated USB-C charging connection.",
+          "componentIds": ["usb.port"],
+          "safetyRuleIds": ["safety.isolate.power"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.switch.off",
+          "order": 2,
+          "title": "Turn the lamp off",
+          "instruction": "Press the main switch so the simulated lamp is off.",
+          "componentIds": ["main.switch"],
+          "safetyRuleIds": ["safety.isolate.power"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.remove.screws",
+          "order": 3,
+          "title": "Remove the four base screws",
+          "instruction": "Rotate the lamp and remove the four screws in a cross pattern.",
+          "componentIds": [
+            "fastener.base.1",
+            "fastener.base.2",
+            "fastener.base.3",
+            "fastener.base.4"
+          ],
+          "safetyRuleIds": ["safety.isolate.power"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.lift.cover",
+          "order": 4,
+          "title": "Lift the base cover",
+          "instruction": "Lift slowly without pulling the wire harness.",
+          "componentIds": ["base.cover", "wire.harness"],
+          "safetyRuleIds": ["safety.isolate.power"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.inspect.battery",
+          "order": 5,
+          "title": "Inspect the battery",
+          "instruction": "Stop if the simulated cell is swollen, hot, damaged, corroded, or has an unusual odor.",
+          "componentIds": ["battery.pack"],
+          "safetyRuleIds": ["safety.stop.cell.damage"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.disconnect.battery",
+          "order": 6,
+          "title": "Disconnect the keyed connector",
+          "instruction": "Hold the connector body and separate it without pulling the wires.",
+          "componentIds": ["battery.pack", "wire.harness"],
+          "safetyRuleIds": ["safety.isolate.power"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.remove.battery",
+          "order": 7,
+          "title": "Remove the old battery",
+          "instruction": "Lift the demonstration module from its fitted cradle.",
+          "componentIds": ["battery.pack"],
+          "safetyRuleIds": ["safety.simulation"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.seat.replacement",
+          "order": 8,
+          "title": "Seat the replacement",
+          "instruction": "Place the staged module in the cradle with the connector aligned.",
+          "componentIds": ["battery.pack"],
+          "safetyRuleIds": ["safety.simulation"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.reconnect.harness",
+          "order": 9,
+          "title": "Reconnect the harness",
+          "instruction": "Join the keyed connector without forcing it.",
+          "componentIds": ["wire.harness", "battery.pack"],
+          "safetyRuleIds": ["safety.simulation"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.close.base",
+          "order": 10,
+          "title": "Close and secure the base",
+          "instruction": "Seat the cover and tighten the screws in a cross pattern.",
+          "componentIds": [
+            "base.cover",
+            "fastener.base.1",
+            "fastener.base.2",
+            "fastener.base.3",
+            "fastener.base.4"
+          ],
+          "safetyRuleIds": ["safety.simulation"],
+          "humanOnly": true
+        },
+        {
+          "id": "step.verify.runtime",
+          "order": 11,
+          "title": "Run the verification",
+          "instruction": "Turn on the restored simulation and complete the five-minute runtime check.",
+          "componentIds": ["main.switch", "led.array"],
+          "safetyRuleIds": ["safety.simulation"],
+          "humanOnly": true
+        }
+      ]
+    }
+  ],
+  "verificationRules": [
+    {
+      "id": "verify.runtime.five.minutes",
+      "planTemplateId": "plan.replace.battery",
+      "label": "Five-minute simulated runtime",
+      "durationSeconds": 300,
+      "successText": "The lamp remains on through the simulated runtime check."
+    }
+  ],
+  "ordsMapping": {
+    "standard": "ORDS",
+    "status": "mapping-only",
+    "fields": {
+      "device.category": "product_category",
+      "symptomPreset": "problem",
+      "verification": "repair_status",
+      "history": "repair_session",
+      "safetyStop": "repair_barrier"
+    }
+  }
+}

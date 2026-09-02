@@ -1,0 +1,78 @@
+:root {
+  color-scheme: dark;
+  --ink: #0b0d0e;
+  --ink-soft: #111415;
+  --graphite: #171a1c;
+  --graphite-raised: #1d2022;
+  --steel: #2b3033;
+  --steel-bright: #454b4e;
+  --paper: #f2f0e9;
+  --mist: #aaafae;
+  --signal: #c8ff4a;
+  --charge: #80a7ff;
+  --warning: #ffb44a;
+  --fault: #ff6a5f;
+  --shadow-panel: 0 20px 54px rgb(0 0 0 / 0.26);
+  --radius-control: 10px;
+  --radius-panel: 16px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --instant: 100ms;
+  --quick: 180ms;
+  --move: 320ms;
+  --explain: 680ms;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ink);
+  font-family: var(--font-sans);
+  color: var(--paper);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: var(--ink);
+  background: var(--signal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto;
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+    transition-duration: 1ms;
+  }
+}
