@@ -131,6 +131,9 @@ export class MeshyProvider implements ImageTo3dProvider {
           },
           body: JSON.stringify({
             image_url: input.imageDataUrl,
+            model_type: "smart-topology",
+            ai_model: "meshy-t2",
+            target_polycount: 30_000,
             texture_prompt: input.objectDescription.slice(0, 800),
             should_texture: true,
             image_enhancement: false,

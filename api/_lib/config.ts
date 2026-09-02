@@ -44,7 +44,7 @@ export function getGenerationConfig(): GenerationConfig {
     throw new ApiError(500, "CONFIGURATION_ERROR", "The generation service is not configured.");
   }
 
-  const providerName = mockMode ? "mock" : configuredString("IMAGE_TO_3D_PROVIDER");
+  const providerName = mockMode ? "mock" : (configuredString("IMAGE_TO_3D_PROVIDER") ?? "meshy");
   if (providerName !== "meshy" && providerName !== "mock") {
     throw new ApiError(500, "CONFIGURATION_ERROR", "The generation service is not configured.");
   }
@@ -52,9 +52,6 @@ export function getGenerationConfig(): GenerationConfig {
   const openAiApiKey = configuredString("OPENAI_API_KEY");
   const openAiAnalysisModel = configuredString("OPENAI_ANALYSIS_MODEL");
   const meshyApiKey = configuredString("MESHY_API_KEY");
-  if (!mockMode && (!openAiApiKey || !openAiAnalysisModel || !meshyApiKey)) {
-    throw new ApiError(500, "CONFIGURATION_ERROR", "The generation service is not configured.");
-  }
 
   return {
     production,

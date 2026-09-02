@@ -32,6 +32,9 @@ describe("Meshy image-to-3D provider", () => {
     expect(url).toBe("https://api.meshy.ai/openapi/v1/image-to-3d");
     expect(JSON.parse(init.body)).toMatchObject({
       image_url: "data:image/png;base64,AAAA",
+      model_type: "smart-topology",
+      ai_model: "meshy-t2",
+      target_polycount: 30_000,
       texture_prompt: "A visibly worn desk lamp.",
       target_formats: ["glb"],
       moderation: true,

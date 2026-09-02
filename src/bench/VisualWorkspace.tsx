@@ -116,7 +116,7 @@ export function VisualWorkspace() {
             alt={`Uploaded view of ${state.objectNameCorrection || "the object"}`}
           />
         ) : null}
-        <HotspotLayer />
+        {!showModel && <HotspotLayer />}
       </div>
       {state.modelError && (
         <p className="model-fallback-note" role="status">

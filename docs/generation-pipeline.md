@@ -20,18 +20,17 @@ image editing](https://developers.openai.com/api/docs/guides/image-generation), 
    as untrusted evidence rather than instructions.
 4. The API returns the analysis and a short-lived HMAC-signed session token. The token binds the
    session to hashes of the original image and analysis.
-5. `POST /api/object/model` verifies that binding. When `normalizeImage` is true, OpenAI Image edits
+5. Repair questions and `POST /api/object/plan` form the core path and do not require Meshy.
+   High-risk classifications take a deterministic professional-help path without actionable repair
+   instructions. The optional 3D action is offered after the guidance is available.
+6. `POST /api/object/model` verifies the session binding. When `normalizeImage` is true, OpenAI Image edits
    the original into a neutral-background reference while preserving identity, damage, markings,
    and geometry. The reference is held only in memory and sent to Meshy as a data URI.
-6. Meshy returns a task ID. The API wraps it in a session-bound signed opaque job ID; it does not
+7. Meshy returns a task ID. The API wraps it in a session-bound signed opaque job ID; it does not
    create an application job record.
-7. `GET /api/object/model?jobId=...` verifies both tokens and polls Meshy. Meshy states map as
+8. `GET /api/object/model?jobId=...` verifies both tokens and polls Meshy. Meshy states map as
    `PENDING` to `queued`, `IN_PROGRESS` to `processing`, `SUCCEEDED` to `succeeded`, `FAILED` to
    `failed`, and `CANCELED` to `cancelled`. Progress is `null` when Meshy omits it.
-8. `POST /api/object/plan` verifies the signed analysis and returns a strict repair-plan contract.
-   High-risk classifications take a deterministic professional-help path without actionable repair
-   instructions.
-
 The browser client exports `analyzeObject`, `startModelGeneration`, `getModelGeneration`, and
 `draftRepairPlan` from `src/generation/client.ts`. Authenticated calls send the session token in the
 `Authorization: Bearer` header. All request, response, analysis, hotspot, observation, status,
@@ -46,17 +45,17 @@ Vercel environment variables rather than source control.
 | --- | --- | --- |
 | `OPENAI_API_KEY` | Production | Server-side OpenAI credential. |
 | `OPENAI_ANALYSIS_MODEL` | Production | An account-accessible Responses model supporting image input and Structured Outputs. No model ID is assumed by the code. |
-| `OPENAI_IMAGE_MODEL` | Optional | An account-accessible GPT Image edit model. If present, normalization is the default. If absent, requesting normalization fails closed. |
-| `IMAGE_TO_3D_PROVIDER` | Production | Must currently be `meshy`. |
-| `MESHY_API_KEY` | Production | Server-side Meshy API credential. |
+| `OPENAI_IMAGE_MODEL` | Optional | An account-accessible GPT Image edit model, required for WebP or explicitly requested normalization. |
+| `IMAGE_TO_3D_PROVIDER` | Optional | Defaults to `meshy`. |
+| `MESHY_API_KEY` | Optional | Required only when the user requests a Meshy 3D model. |
 | `SESSION_SIGNING_SECRET` | Production | Random secret of at least 32 bytes used for session and job HMAC signatures. |
 | `SESSION_TTL_SECONDS` | Optional | Session and job lifetime. Default: 1,800 seconds. |
 | `OPENAI_TIMEOUT_MS` | Optional | Per OpenAI request timeout. Default: 120,000 ms. |
 | `IMAGE_TO_3D_TIMEOUT_MS` | Optional | Per Meshy request timeout. Default: 20,000 ms. |
 | `GENERATION_MOCK_MODE` | Local only | Replaces OpenAI and Meshy with deterministic local responses outside production. |
 
-Production ignores the mock flag and fails closed when signing, OpenAI, provider, or model
-configuration is missing.
+Production ignores the mock flag. Analysis and repair planning require signing plus OpenAI
+configuration. Only the optional model routes require Meshy configuration.
 
 ## Image constraints and normalization
 
@@ -72,8 +71,31 @@ the decoded image to 40 million pixels.
 
 Meshy's documented Image to 3D input formats are JPEG and PNG. A WebP upload can be analyzed, but
 model generation requires OpenAI normalization or a new JPEG/PNG upload. Set `normalizeImage` to
-`false` to send an already suitable JPEG/PNG directly to Meshy. If the field is omitted,
-normalization defaults on when `OPENAI_IMAGE_MODEL` is configured.
+`true` to normalize a JPEG or PNG explicitly. If the field is omitted, normalization runs only for
+WebP input; already suitable JPEG and PNG images go directly to Meshy.
+
+Meshy requests use Smart Topology with `meshy-t2` and a 30,000 polygon target. Meshy documents this
+mode as producing cleaner topology with natively separated parts. Separation can make a later
+exploded-view feature practical, but it does not provide trustworthy repair labels or part-to-photo
+hotspot mappings by itself.
+
+## Meshy Playground example
+
+Upload [`docs/assets/meshy-playground-pencil-sharpener.png`](assets/meshy-playground-pencil-sharpener.png)
+to Meshy Image to 3D. It is a front three-quarter product image with a plain background and visible
+external components, matching Meshy's current input guidance.
+
+Use Smart Topology, `meshy-t2`, a target of about 30,000 polygons, texture generation on, and image
+enhancement off for the first attempt. Use this texture prompt:
+
+```text
+Vintage manual hand-crank pencil sharpener, dark forest-green painted cast-metal body with subtle authentic edge wear, brushed steel crank, faceplate and desk clamp, translucent amber shavings drawer, realistic product materials, clean game-ready asset, preserve the distinct external components, no added text or logos.
+```
+
+The texture prompt guides appearance; the uploaded image remains the geometry reference. A clean
+generated mesh can demonstrate the optional 3D experience, but Meshy does not create RE:PAIR's
+hotspot labels. OpenAI supplies those labels from the original photo, and the UI deliberately keeps
+them on the photo until a trustworthy 3D anchor-mapping stage exists.
 
 ## Safety behavior
 

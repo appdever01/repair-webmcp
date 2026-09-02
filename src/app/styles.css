@@ -375,11 +375,6 @@ textarea::placeholder {
   line-height: 1.5;
 }
 
-.turnstile-slot {
-  min-height: 66px;
-  margin-left: 31px;
-}
-
 .primary-button,
 .secondary-button {
   min-height: 48px;
@@ -1074,6 +1069,35 @@ textarea::placeholder {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.optional-model {
+  display: grid;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid var(--steel);
+}
+
+.optional-model .eyebrow,
+.optional-model h3,
+.optional-model p {
+  margin: 0;
+}
+
+.optional-model > p:not(.eyebrow) {
+  color: var(--mist-bright);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.optional-model-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.optional-model-actions > span {
+  color: var(--mist);
+  font-size: 11px;
 }
 
 .activity-dock {

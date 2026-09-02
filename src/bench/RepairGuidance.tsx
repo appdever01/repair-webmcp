@@ -19,6 +19,69 @@ const observationKinds: Array<{ value: ObservationKind; label: string }> = [
   { value: "user_report", label: "Something I already know" },
 ];
 
+function OptionalModelAction() {
+  const state = useWorkspaceStore((current) => current);
+  const generating = state.generationStatus === "queued" || state.generationStatus === "processing";
+
+  if (state.model) {
+    return (
+      <section className="optional-model" aria-labelledby="optional-model-title">
+        <p className="eyebrow">Optional 3D view</p>
+        <h3 id="optional-model-title">Your interactive model is ready.</h3>
+        <p>
+          Use the 3D model tab above to rotate and inspect it. Photo labels remain on the photo.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="optional-model" aria-labelledby="optional-model-title">
+      <p className="eyebrow">Optional 3D view</p>
+      <h3 id="optional-model-title">
+        {generating ? "Building the interactive model." : "Explore the object in 3D."}
+      </h3>
+      <p>
+        This sends the prepared photo to the configured 3D provider. Your repair guidance remains
+        usable if generation fails.
+      </p>
+      {state.generationError && (
+        <p className="inline-error" role="alert">
+          {state.generationError.message}
+        </p>
+      )}
+      {generating ? (
+        <div className="optional-model-actions">
+          <span role="status">{state.generationMessage ?? "Building the 3D model."}</span>
+          <button
+            type="button"
+            className="text-button"
+            onClick={() =>
+              workspaceStore.getState().cancelCurrentTask(humanActionOptions(workspaceStore))
+            }
+          >
+            Cancel 3D generation
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={state.isBusy}
+          onClick={() =>
+            void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
+          }
+        >
+          <RepairIcon name="cube" />
+          {state.generationStatus === "failed" || state.generationStatus === "cancelled"
+            ? "Retry optional 3D"
+            : "Build optional 3D"}
+        </button>
+      )}
+    </section>
+  );
+}
+
 function QuestionForm() {
   const question = useWorkspaceStore(useShallow(selectActiveQuestion));
   const [kind, setKind] = useState<ObservationKind>("visual");
@@ -185,6 +248,7 @@ function PlanView() {
           <p>No additional unknowns were listed.</p>
         )}
       </details>
+      <OptionalModelAction />
       <p className="authority-note">
         Only a person can perform, approve, or confirm physical work.
       </p>
@@ -216,30 +280,6 @@ export function RepairGuidance() {
         <QuestionForm />
       </aside>
     );
-  if (state.generationStatus === "idle") {
-    return (
-      <aside className="guidance-panel" id="3d-generation">
-        <p className="eyebrow">Next action</p>
-        <h2>Build an interactive view.</h2>
-        <p>
-          A 3D provider will process the prepared photo. If it cannot build or load the model, the
-          photo and hotspot controls stay available.
-        </p>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() =>
-            void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
-          }
-        >
-          <RepairIcon name="cube" /> Build 3D model
-        </button>
-        <p className="authority-note">
-          No percentage is shown because provider estimates are not reliable progress.
-        </p>
-      </aside>
-    );
-  }
   if (state.isBusy) {
     return (
       <aside className="guidance-panel busy-guidance">

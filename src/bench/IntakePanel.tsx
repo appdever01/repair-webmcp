@@ -63,8 +63,8 @@ export function IntakePanel() {
           <p className="eyebrow">Photo-guided repair</p>
           <h1 id="intake-title">Show us what needs fixing.</h1>
           <p className="hero-copy">
-            Upload a clear photo. RE:PAIR identifies the object, builds an interactive model, and
-            guides a safe next step.
+            Upload a clear photo. RE:PAIR identifies the object, labels visible areas, and guides a
+            safe next step. A 3D model is optional after the guidance is ready.
           </p>
         </div>
         <div className="upload-card">
@@ -165,8 +165,8 @@ export function IntakePanel() {
                   }
                 />
                 <span>
-                  I agree to send this image to OpenAI and the configured 3D provider for
-                  processing.
+                  I agree to send this image to OpenAI for analysis. It goes to the 3D provider only
+                  if I later choose to build a model.
                 </span>
               </label>
               <p>

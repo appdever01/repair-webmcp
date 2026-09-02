@@ -46,7 +46,7 @@ async function startGeneration(request: Request): Promise<Response> {
   const image = validateImage(input.image);
   assertSessionBindings(session, image.sha256, input.analysis);
   const shouldNormalize =
-    !config.mockMode && (input.normalizeImage ?? Boolean(config.openAiImageModel));
+    !config.mockMode && (input.normalizeImage ?? image.mediaType === "image/webp");
   const reference = shouldNormalize
     ? await normalizeReferenceImage(image, config, request.signal)
     : image;
