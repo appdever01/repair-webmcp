@@ -54,11 +54,44 @@ describe("upload-first manual experience", () => {
   it("explains the product and remains fully usable in manual mode", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Show us what needs fixing." })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "One photo. A clearer fix." })).toBeInTheDocument();
     expect(screen.getByText("Manual mode")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agent activity/ })).toHaveTextContent("0 actions");
     expect(screen.getByRole("button", { name: "Try the sample lamp" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "The things you actually use." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText("A phone with a cracked screen and loose charging port highlighted."),
+    ).toHaveAttribute("src", "/repair-phone.png");
+    expect(
+      screen.getByAltText("A sneaker with a peeling sole highlighted and its layers separated."),
+    ).toHaveAttribute("src", "/repair-sneaker.png");
+    expect(
+      screen.getByAltText("A bicycle with its slipped chain and rear gear highlighted."),
+    ).toHaveAttribute("src", "/repair-bike.png");
+    expect(screen.getByText("Powered by OpenAI")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Understand the object. Choose a safer next step."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/Choose a photo/)).toHaveAttribute("hidden");
+  });
+
+  it("accepts an image pasted from the clipboard", () => {
+    render(<App />);
+
+    fireEvent.paste(window, {
+      clipboardData: {
+        files: [new File(["pasted photo"], "clipboard.png", { type: "image/png" })],
+        items: [],
+      },
+    });
+
+    expect(screen.getByAltText("Selected object preview")).toHaveAttribute(
+      "src",
+      "blob:local-preview",
+    );
+    expect(screen.getByText("clipboard.png")).toBeInTheDocument();
   });
 
   it("shows a local preview, gates analysis on consent, and removes image memory", async () => {

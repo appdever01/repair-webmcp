@@ -32,6 +32,7 @@ export function RepairWorkspace() {
             <input
               className="sr-only"
               type="file"
+              hidden
               accept="image/jpeg,image/png,image/webp"
               onChange={(event) => {
                 const file = event.currentTarget.files?.[0];

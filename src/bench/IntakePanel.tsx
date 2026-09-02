@@ -1,4 +1,4 @@
-import { type ChangeEvent, type DragEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useState } from "react";
 import { RepairIcon } from "../design/RepairIcon";
 import {
   humanActionOptions,
@@ -24,12 +24,29 @@ export function IntakePanel() {
     });
   }, [state.uploaderFocusRequest]);
 
-  const acceptFile = (file: File | undefined) => {
+  const acceptFile = useCallback((file: File | null | undefined) => {
     if (!file) return;
     const error = validateImageFile(file);
     setSelectionError(error);
     if (!error) workspaceStore.getState().selectImage(file);
-  };
+  }, []);
+
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const pastedImage =
+        Array.from(event.clipboardData?.items ?? [])
+          .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+          ?.getAsFile() ??
+        Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
+
+      if (!pastedImage) return;
+      event.preventDefault();
+      acceptFile(pastedImage);
+    };
+
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [acceptFile]);
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     acceptFile(event.currentTarget.files?.[0]);
@@ -60,11 +77,10 @@ export function IntakePanel() {
     <div className="intake-page">
       <section className="intake-hero" aria-labelledby="intake-title">
         <div className="intake-copy">
-          <p className="eyebrow">Photo-guided repair</p>
-          <h1 id="intake-title">Show us what needs fixing.</h1>
+          <p className="eyebrow">Start with a photo</p>
+          <h1 id="intake-title">One photo. A clearer fix.</h1>
           <p className="hero-copy">
-            Upload a clear photo. RE:PAIR identifies the object, labels visible areas, and guides a
-            safe next step. A 3D model is optional after the guidance is ready.
+            Drop in a photo. We’ll spot what’s wrong and guide you to the safest next step.
           </p>
         </div>
         <div className="upload-card">
@@ -73,6 +89,7 @@ export function IntakePanel() {
             id="object-photo"
             className="sr-only file-input"
             type="file"
+            hidden
             aria-label="Choose a photo"
             accept="image/jpeg,image/png,image/webp"
             onChange={onFileChange}
@@ -107,16 +124,16 @@ export function IntakePanel() {
                 <span className="upload-icon">
                   <RepairIcon name="upload" size={28} />
                 </span>
-                <strong>Choose a photo</strong>
-                <span>or drop it here</span>
+                <strong>Drop or paste a photo</strong>
+                <span>or click to browse</span>
                 <small>JPEG, PNG, or WebP · up to 24 MB before compression</small>
               </div>
             )}
           </button>
           {state.uploaderPromptVisible && (
             <p className="agent-prompt-note">
-              <RepairIcon name="agent" /> A browser agent opened this area. You must choose the
-              file.
+              <RepairIcon name="agent" /> A browser agent opened this area. Drop, paste, or choose
+              the image yourself.
             </p>
           )}
           {selectionError && (
@@ -203,34 +220,46 @@ export function IntakePanel() {
           </div>
         </div>
       </section>
-      <section className="how-it-works" aria-labelledby="how-title">
-        <div>
-          <p className="eyebrow">A careful path</p>
-          <h2 id="how-title">How it works</h2>
+      <section className="object-showcase" aria-labelledby="object-showcase-title">
+        <div className="object-showcase-heading">
+          <p className="eyebrow">Built for everyday objects</p>
+          <h2 id="object-showcase-title">The things you actually use.</h2>
         </div>
-        <ol>
-          <li>
-            <b>1</b>
-            <span>
-              <strong>Share one clear view</strong>Show the object and visible damage without
-              opening hazardous parts.
-            </span>
-          </li>
-          <li>
-            <b>2</b>
-            <span>
-              <strong>Review what we see</strong>Correct the name, inspect uncertainties, and answer
-              only what you can observe.
-            </span>
-          </li>
-          <li>
-            <b>3</b>
-            <span>
-              <strong>Choose a safe next step</strong>Use cautious guidance or stop and contact a
-              qualified professional.
-            </span>
-          </li>
-        </ol>
+        <div className="object-stage">
+          <figure className="repair-object repair-object-phone">
+            <img
+              src="/repair-phone.png"
+              alt="A phone with a cracked screen and loose charging port highlighted."
+              width="488"
+              height="760"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Cracked screen</figcaption>
+          </figure>
+          <figure className="repair-object repair-object-sneaker">
+            <img
+              src="/repair-sneaker.png"
+              alt="A sneaker with a peeling sole highlighted and its layers separated."
+              width="760"
+              height="461"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Peeling sole</figcaption>
+          </figure>
+          <figure className="repair-object repair-object-bike">
+            <img
+              src="/repair-bike.png"
+              alt="A bicycle with its slipped chain and rear gear highlighted."
+              width="760"
+              height="452"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Slipped chain</figcaption>
+          </figure>
+        </div>
       </section>
     </div>
   );

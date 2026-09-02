@@ -21,10 +21,15 @@ export function TopRail({ activityStore }: { activityStore: AgentActivityStore }
 
   return (
     <header className="top-rail">
-      <a className="wordmark" href="#main-content" aria-label="RE:PAIR home">
-        RE<span aria-hidden="true">:</span>PAIR
-      </a>
-      <p>Understand the object. Choose a safer next step.</p>
+      <div className="brand-lockup">
+        <a className="wordmark" href="#main-content" aria-label="RE:PAIR home">
+          <img src="/repair-logo.png" alt="" width="32" height="32" />
+          <span className="wordmark-text">
+            RE<span aria-hidden="true">:</span>PAIR
+          </span>
+        </a>
+        <p className="powered-by">Powered by OpenAI</p>
+      </div>
       <div className="agent-status" data-active={agentActive || demoActive}>
         <span aria-hidden="true" />
         {status}
