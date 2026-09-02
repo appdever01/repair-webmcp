@@ -25,7 +25,7 @@ describe("typed generation client contracts", () => {
 
     await expect(
       analyzeObject(
-        { image: pngImage(), problemDescription: "Loose shade", turnstileToken: "challenge" },
+        { image: pngImage(), problemDescription: "Loose shade" },
         new AbortController().signal,
       ),
     ).resolves.toMatchObject({ sessionToken: SESSION_TOKEN });

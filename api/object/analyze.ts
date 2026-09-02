@@ -4,7 +4,6 @@ import { handleApi, jsonResponse, readJson, requireMethod, requireSameOrigin } f
 import { validateImage } from "../_lib/image";
 import { analyzeWithOpenAI } from "../_lib/openai";
 import { createSessionToken } from "../_lib/token";
-import { verifyTurnstile } from "../_lib/turnstile";
 
 export default function handler(request: Request): Promise<Response> {
   return handleApi(async () => {
@@ -12,7 +11,6 @@ export default function handler(request: Request): Promise<Response> {
     requireSameOrigin(request);
     const config = getGenerationConfig();
     const input = await readJson(request, analyzeObjectRequestSchema);
-    await verifyTurnstile(request, input.turnstileToken, config);
     const image = validateImage(input.image);
     const analysis = await analyzeWithOpenAI(
       image,

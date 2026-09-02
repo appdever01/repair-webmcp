@@ -18,7 +18,6 @@ describe("generation API mock flow", () => {
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("VERCEL_ENV", "development");
-    vi.stubEnv("GENERATION_SECURITY_BYPASS", "true");
     vi.stubEnv("GENERATION_MOCK_MODE", "true");
     vi.stubEnv("SESSION_SIGNING_SECRET", "a-production-length-secret-that-is-at-least-32-bytes");
   });

@@ -72,7 +72,6 @@ export const analyzeObjectRequestSchema = z
   .object({
     image: compressedImageSchema,
     problemDescription: z.string().trim().max(2_000).optional(),
-    turnstileToken: z.string().min(1).max(2_048).optional(),
   })
   .strict();
 
@@ -126,7 +125,6 @@ export const generationErrorCodeSchema = z.enum([
   "MIME_MISMATCH",
   "INVALID_IMAGE",
   "ORIGIN_NOT_ALLOWED",
-  "ABUSE_CHECK_FAILED",
   "UNAUTHORIZED",
   "SESSION_EXPIRED",
   "CONFIGURATION_ERROR",

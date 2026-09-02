@@ -6,16 +6,15 @@ a polygon mesh or GLB from visual analysis.
 
 The implementation follows the current official contracts for the [OpenAI Responses
 API](https://developers.openai.com/api/reference/cli/resources/responses/methods/create), [OpenAI
-image editing](https://developers.openai.com/api/docs/guides/image-generation), [Meshy Image to
-3D](https://docs.meshy.ai/en/api/image-to-3d), and [Cloudflare Turnstile
-Siteverify](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/).
+image editing](https://developers.openai.com/api/docs/guides/image-generation), and [Meshy Image to
+3D](https://docs.meshy.ai/en/api/image-to-3d).
 
 ## Flow
 
 1. The browser compresses one JPEG, PNG, or WebP and calls `POST /api/object/analyze` with its
-   declared media type, base64 data, optional problem description, and a Turnstile token.
-2. The API verifies the exact same origin and Turnstile action/hostname, then checks base64, decoded
-   size, magic bytes, declared MIME type, and image dimensions.
+   declared media type, base64 data, and optional problem description.
+2. The API verifies the exact same origin, then checks base64, decoded size, magic bytes, declared
+   MIME type, and image dimensions.
 3. OpenAI Responses receives the image as a data URL and returns strict structured analysis with
    `store: false`. Image pixels, visible text, metadata, labels, and user text are explicitly treated
    as untrusted evidence rather than instructions.
@@ -52,18 +51,12 @@ Vercel environment variables rather than source control.
 | `MESHY_API_KEY` | Production | Server-side Meshy API credential. |
 | `SESSION_SIGNING_SECRET` | Production | Random secret of at least 32 bytes used for session and job HMAC signatures. |
 | `SESSION_TTL_SECONDS` | Optional | Session and job lifetime. Default: 1,800 seconds. |
-| `TURNSTILE_SECRET_KEY` | Production | Server-side Turnstile widget secret. |
-| `TURNSTILE_EXPECTED_ACTION` | Optional | Expected widget action. Default: `object_analyze`. |
 | `OPENAI_TIMEOUT_MS` | Optional | Per OpenAI request timeout. Default: 120,000 ms. |
 | `IMAGE_TO_3D_TIMEOUT_MS` | Optional | Per Meshy request timeout. Default: 20,000 ms. |
-| `TURNSTILE_TIMEOUT_MS` | Optional | Turnstile verification timeout. Default: 8,000 ms. |
-| `GENERATION_SECURITY_BYPASS` | Local only | Explicitly permits missing signing and Turnstile configuration outside production. |
 | `GENERATION_MOCK_MODE` | Local only | Replaces OpenAI and Meshy with deterministic local responses outside production. |
 
-Production ignores both bypass flags and fails closed when signing, Turnstile, OpenAI, provider, or
-model configuration is missing. Use a Turnstile widget with action `object_analyze` unless
-`TURNSTILE_EXPECTED_ACTION` is changed. Siteverify must return the same hostname as the API request;
-production widget domains therefore must match the deployed frontend hostname.
+Production ignores the mock flag and fails closed when signing, OpenAI, provider, or model
+configuration is missing.
 
 ## Image constraints and normalization
 
@@ -107,22 +100,20 @@ links. Poll again if an asset link expires. Provider credentials and raw respons
 browser.
 
 Same-origin checks require an exact `Origin` match or a browser `Sec-Fetch-Site: same-origin`
-header. Turnstile verification requires success, the configured action, and the request hostname.
-Turnstile tokens are single use, so the UI must reset its widget before retrying a submission.
+header.
 
 ## Local mock mode
 
 For local contract/UI work without API credits, set:
 
 ```dotenv
-GENERATION_SECURITY_BYPASS=true
 GENERATION_MOCK_MODE=true
 ```
 
 Mock mode still validates origins, JSON contracts, image bytes, session bindings, expiry, and job
 bindings. It returns a generic analysis, cautious mock plan, and a minimal in-data GLB. It does not
-assess visual quality or safety and cannot validate real OpenAI, Turnstile, or Meshy credentials.
-Neither flag has any effect in production.
+assess visual quality or safety and cannot validate real OpenAI or Meshy credentials. The flag has
+no effect in production.
 
 Tests mock every external request. Run the focused suite with:
 
@@ -137,7 +128,7 @@ include:
 
 - `INVALID_REQUEST`, `INVALID_IMAGE`, `MIME_MISMATCH`, `UNSUPPORTED_MEDIA_TYPE`, and
   `IMAGE_TOO_LARGE` for rejected input.
-- `ORIGIN_NOT_ALLOWED` and `ABUSE_CHECK_FAILED` for request protection failures.
+- `ORIGIN_NOT_ALLOWED` for request protection failures.
 - `UNAUTHORIZED` and `SESSION_EXPIRED` for invalid, mismatched, tampered, or expired state.
 - `UPSTREAM_RATE_LIMITED`, `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE`, and
   `UPSTREAM_RESPONSE_INVALID` for sanitized provider failures.

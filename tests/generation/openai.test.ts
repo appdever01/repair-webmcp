@@ -6,7 +6,6 @@ import { objectAnalysis, pngImage, repairPlan } from "./fixtures";
 function config(overrides: Partial<GenerationConfig> = {}): GenerationConfig {
   return {
     production: false,
-    securityBypass: true,
     mockMode: false,
     sessionSigningSecret: "a-production-length-secret-that-is-at-least-32-bytes",
     sessionTtlSeconds: 1_800,
@@ -17,9 +16,6 @@ function config(overrides: Partial<GenerationConfig> = {}): GenerationConfig {
     imageTo3dProvider: "meshy",
     meshyApiKey: "meshy-key",
     providerTimeoutMs: 1_000,
-    turnstileSecretKey: null,
-    turnstileExpectedAction: "object_analyze",
-    turnstileTimeoutMs: 1_000,
     ...overrides,
   };
 }
