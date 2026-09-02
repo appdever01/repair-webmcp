@@ -55,7 +55,7 @@ describe("upload-first manual experience", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "One photo. A clearer fix." })).toBeInTheDocument();
-    expect(screen.getByText("Manual mode")).toBeInTheDocument();
+    expect(screen.queryByText("Manual mode")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agent activity/ })).toHaveTextContent("0 actions");
     expect(screen.getByRole("button", { name: "Try the sample lamp" })).toBeInTheDocument();
     expect(

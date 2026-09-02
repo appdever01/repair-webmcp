@@ -26,7 +26,7 @@ export function App() {
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
-        <TopRail activityStore={runtime.activityStore} />
+        <TopRail />
         <main id="main-content">
           <Bench />
         </main>
