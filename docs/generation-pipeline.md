@@ -74,10 +74,12 @@ model generation requires OpenAI normalization or a new JPEG/PNG upload. Set `no
 `true` to normalize a JPEG or PNG explicitly. If the field is omitted, normalization runs only for
 WebP input; already suitable JPEG and PNG images go directly to Meshy.
 
-Meshy requests use Smart Topology with `meshy-t2` and a 30,000 polygon target. Meshy documents this
-mode as producing cleaner topology with natively separated parts. Separation can make a later
-exploded-view feature practical, but it does not provide trustworthy repair labels or part-to-photo
-hotspot mappings by itself.
+Meshy requests use Smart Topology with `meshy-t2` and the documented maximum 15,000 polygon target.
+Meshy describes this mode as producing cleaner topology with natively separated parts. Some exports
+still contain one unnamed mesh with disconnected geometric islands. The scene welds duplicate seam
+vertices, recovers up to 48 connected components, keeps the largest component anchored, and animates
+the remaining components for the Explode and Assemble controls. This geometric separation does not
+provide trustworthy repair labels or part-to-photo hotspot mappings by itself.
 
 ## Meshy Playground example
 
@@ -85,7 +87,7 @@ Upload [`docs/assets/meshy-playground-pencil-sharpener.png`](assets/meshy-playgr
 to Meshy Image to 3D. It is a front three-quarter product image with a plain background and visible
 external components, matching Meshy's current input guidance.
 
-Use Smart Topology, `meshy-t2`, a target of about 30,000 polygons, texture generation on, and image
+Use Smart Topology, `meshy-t2`, a target of 15,000 polygons, texture generation on, and image
 enhancement off for the first attempt. Use this texture prompt:
 
 ```text

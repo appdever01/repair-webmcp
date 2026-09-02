@@ -61,8 +61,10 @@ export function VisualWorkspace() {
   const state = useWorkspaceStore((current) => current);
   const [webgl] = useState(supportsWebGL);
   const [command, setCommand] = useState<SceneCommand>({ id: 0, type: "reset" });
+  const [explodedModelUrl, setExplodedModelUrl] = useState<string | null>(null);
   const modelAvailable = Boolean(state.model && webgl && !state.modelError);
   const showModel = state.visualMode === "model" && modelAvailable;
+  const exploded = state.model?.glbUrl === explodedModelUrl;
   const nextCommand = (type: SceneCommand["type"]) =>
     setCommand((current) => ({ id: current.id + 1, type }));
 
@@ -107,7 +109,7 @@ export function VisualWorkspace() {
                 </div>
               }
             >
-              <RepairScene modelUrl={state.model.glbUrl} command={command} />
+              <RepairScene modelUrl={state.model.glbUrl} command={command} exploded={exploded} />
             </Suspense>
           </ModelBoundary>
         ) : state.image ? (
@@ -135,6 +137,20 @@ export function VisualWorkspace() {
           <legend className="sr-only">3D view controls</legend>
           <span>Drag to orbit · scroll to zoom</span>
           <div>
+            <button
+              type="button"
+              className="explode-control"
+              aria-label={exploded ? "Assemble model parts" : "Explode model parts"}
+              aria-pressed={exploded}
+              onClick={() =>
+                setExplodedModelUrl((current) =>
+                  current === state.model?.glbUrl ? null : (state.model?.glbUrl ?? null),
+                )
+              }
+            >
+              <RepairIcon name={exploded ? "reuse" : "isolate"} />
+              {exploded ? "Assemble" : "Explode"}
+            </button>
             <button
               type="button"
               aria-label="Rotate model left"

@@ -6,9 +6,10 @@ import {
   PerformanceMonitor,
   useGLTF,
 } from "@react-three/drei";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { type ComponentRef, useEffect, useMemo, useRef, useState } from "react";
-import { ACESFilmicToneMapping, SRGBColorSpace, Vector3 } from "three";
+import { ACESFilmicToneMapping, MathUtils, SRGBColorSpace, Vector3 } from "three";
+import { prepareExplodableScene } from "./explode";
 import { getDpr, getQualityTier } from "./quality";
 
 export interface SceneCommand {
@@ -16,13 +17,42 @@ export interface SceneCommand {
   type: "rotate-left" | "rotate-right" | "zoom-in" | "zoom-out" | "reset";
 }
 
-function GeneratedModel({ modelUrl }: { modelUrl: string }) {
+function GeneratedModel({ modelUrl, exploded }: { modelUrl: string; exploded: boolean }) {
   const gltf = useGLTF(modelUrl);
-  const scene = useMemo(() => gltf.scene.clone(true), [gltf.scene]);
+  const prepared = useMemo(() => prepareExplodableScene(gltf.scene.clone(true)), [gltf.scene]);
+  const progress = useRef(0);
+  const invalidate = useThree((state) => state.invalidate);
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
+
+  useEffect(() => prepared.dispose, [prepared]);
+  useEffect(() => {
+    const target = exploded ? 1 : 0;
+    if (reducedMotion) {
+      progress.current = target;
+      for (const part of prepared.parts) {
+        part.node.position.copy(part.basePosition).addScaledVector(part.offset, target);
+      }
+    }
+    invalidate();
+  }, [exploded, invalidate, prepared, reducedMotion]);
+
+  useFrame((_, delta) => {
+    if (reducedMotion) return;
+    const target = exploded ? 1 : 0;
+    const next = MathUtils.damp(progress.current, target, 7, Math.min(delta, 0.1));
+    progress.current = Math.abs(next - target) < 0.001 ? target : next;
+    for (const part of prepared.parts) {
+      part.node.position.copy(part.basePosition).addScaledVector(part.offset, progress.current);
+    }
+    if (progress.current !== target) invalidate();
+  });
+
   return (
-    <Bounds fit clip observe margin={1.25}>
+    <Bounds fit clip observe margin={1.65}>
       <Center>
-        <primitive object={scene} />
+        <primitive object={prepared.scene} />
       </Center>
     </Bounds>
   );
@@ -67,7 +97,15 @@ function CameraControls({ command }: { command: SceneCommand }) {
   );
 }
 
-export function RepairScene({ modelUrl, command }: { modelUrl: string; command: SceneCommand }) {
+export function RepairScene({
+  modelUrl,
+  command,
+  exploded,
+}: {
+  modelUrl: string;
+  command: SceneCommand;
+  exploded: boolean;
+}) {
   const tier = getQualityTier();
   const [dpr, setDpr] = useState(() => getDpr(tier));
 
@@ -99,7 +137,7 @@ export function RepairScene({ modelUrl, command }: { modelUrl: string; command: 
       />
       <directionalLight position={[6, 4, -2]} intensity={1.4} color="#a9c0eb" />
       <spotLight position={[0, 7, -7]} intensity={8} angle={0.5} penumbra={0.8} color="#e8eee8" />
-      <GeneratedModel modelUrl={modelUrl} />
+      <GeneratedModel modelUrl={modelUrl} exploded={exploded} />
       <ContactShadows
         position={[0, -1.2, 0]}
         opacity={0.28}

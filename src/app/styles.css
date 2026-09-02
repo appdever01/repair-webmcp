@@ -97,6 +97,20 @@
   background: var(--graphite);
 }
 
+.model-controls .explode-control {
+  width: auto;
+  min-width: 112px;
+  grid-auto-flow: column;
+  gap: 8px;
+  padding-inline: 12px;
+  border: 1px solid var(--steel);
+}
+
+.model-controls .explode-control[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--signal);
+}
+
 #main-content {
   width: min(100% - clamp(28px, 5vw, 80px), 1480px);
   margin-inline: auto;
