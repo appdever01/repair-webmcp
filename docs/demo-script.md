@@ -1,67 +1,71 @@
 # RE:PAIR demo script
 
-Target length: 2 minutes 45 seconds
+Target length: 3 minutes
 
-## 0:00 to 0:12 · The shared limitation
+## 0:00–0:20 · Understand the product
 
-Show the intact lamp on the quiet workbench.
-
-Voice:
-
-> Repair manuals can explain a machine. Agents can reason about one. But neither can touch the object in front of you. RE:PAIR gives both of you the same living repair bench.
-
-## 0:12 to 0:32 · Symptom and inspection
-
-Enter the exact prompt. Show `get_bench_state`, `set_repair_goal`, and `focus_component`. Let the lamp open.
+Start on the empty state. Keep the heading, upload surface, privacy disclosure, and three-step explanation visible.
 
 Voice:
 
-> I tell my agent the lamp charges but dies after five minutes, with a twenty-dollar limit. It reads the bench, records that goal, and opens the power system.
+> Show RE:PAIR one clear photo. It identifies the object, builds an interactive view when it can, and helps you choose a cautious next step without pretending a photo is a diagnosis.
 
-## 0:32 to 1:02 · Human observation
+## 0:20–0:45 · Select and consent
 
-Show safe checks. Use the simulated meter for the off-load, loaded, and rebound readings. Report each reading to the agent.
+Drop a photo of an everyday object with visible damage. If a suitable image is unavailable, select `Try the sample lamp`. Add one short problem description.
 
-Voice:
-
-> The agent knows what to test, but it cannot hold the probes. I make the observation. It records exactly what I reported, and the interface shows that source.
-
-## 1:02 to 1:25 · Deterministic diagnosis
-
-Show three hypotheses resolve to battery cell wear and reveal the fixed explanation codes.
+Show the immediate local preview, replace/remove controls, processing disclosure, and disabled analysis action. Grant consent and start analysis.
 
 Voice:
 
-> Voltage collapses under load and rebounds afterward, so battery wear rises above the controller and LED board. There is no invented confidence score, only deterministic rules and visible evidence.
+> The image stays local until I consent. The browser compresses it before sending it to OpenAI. RE:PAIR does not put uploads in browser storage.
 
-## 1:25 to 1:50 · Compare and stage
+## 0:45–1:15 · Review understanding
 
-Show repair, wired reuse, and replacement. Stage the battery plan and compatible part.
-
-Voice:
-
-> RE:PAIR compares each outcome against the limits I care about. The agent can stage the twelve-dollar battery and plan, but it cannot approve or buy anything.
-
-## 1:50 to 2:20 · Human authority
-
-Approve the plan in the interface. Complete representative physical steps, then show the step progress and semantic component hierarchy.
+Let the progressive states move through `Uploading` and `Understanding the object`. Show the object name, visible condition, possible issues, confidence, safety status, and uncertainty statement. Correct the displayed object name once.
 
 Voice:
 
-> Approval and physical completion stay with me. The model focuses each component, and the text hierarchy carries the same instructions for keyboard and screen-reader use.
+> I can correct what the system calls the object. Visible issues remain hypotheses, and hidden condition stays explicitly unknown.
 
-## 2:20 to 2:38 · Restored
+## 1:15–1:45 · Build the visual workspace
 
-Complete verification. Show the reassembled, illuminated lamp and repair receipt.
+Choose `Build 3D model`. Show `Preparing a clean reference`, `Building the 3D model`, and `Finishing the workspace`. Do not narrate a percentage.
 
-Voice:
+When generation succeeds, orbit, zoom, use one keyboard-accessible rotation control, and reset the view. Select one numbered hotspot in 3D, then the same hotspot in the semantic list.
 
-> The lamp returns to life. The trail shows what the agent reasoned, what I observed, and what I approved.
-
-## 2:38 to 2:45 · Close
+If the provider or GLB fails, continue the demo using the interactive photo. Point out that the same hotspots and list remain available.
 
 Voice:
 
-> Repair is a pair. The agent understands the machine. The human brings the judgment and hands.
+> The 3D view is useful, but never required. The photo, numbered regions, and text list share one focused state, so a loading or CORS failure does not end the repair path.
 
-End on the hosted product URL and public repository URL.
+## 1:45–2:15 · Keep observations human
+
+Open the next clarifying question. Enter a direct observation through the visible form, or choose `I can’t determine this safely`.
+
+Voice:
+
+> An agent may open a question, but it cannot answer for me. Human observations come only from explicit human controls.
+
+## 2:15–2:40 · Show visible agent activity
+
+Open `Agent activity`. If WebMCP is available, ask the browser agent to read the workspace and focus a hotspot. Otherwise use the guided demo invocation. Keep its `Guided demo` label visible.
+
+Show the tool title, source, lifecycle state, elapsed time, safe summaries, timestamp, and visible change.
+
+Voice:
+
+> Agent work is not hidden. Real browser-agent calls and guided demo calls are labeled separately, and secrets, signed URLs, and private reasoning never appear here.
+
+## 2:40–3:00 · Guidance and authority
+
+Draft guidance. Show stop conditions before the first action, then expand hypotheses to reveal evidence for, evidence against, and unknowns.
+
+For a high-risk fixture, briefly show the professional-help-only stop instead of actionable steps.
+
+Voice:
+
+> The result offers one cautious next action and clear reasons to stop. The agent can understand, focus, and draft. Only a person can observe, approve, act, or say physical work is complete.
+
+End on the production URL. Do not trigger a real provider call during a rehearsed automated test; use mocked contracts or the prepared demo session.

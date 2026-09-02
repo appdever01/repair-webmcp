@@ -1,331 +1,172 @@
 <div align="center">
-  <img src="./public/repair-og.jpg" alt="RE:PAIR exploded view of the Aurelia S1 solar study lamp" width="1200" />
-
+  <img src="./public/repair-og.jpg" alt="RE:PAIR object repair workspace" width="1200" />
   <h1>RE:PAIR</h1>
-
-  <p><strong>A living 3D repair manual for people and browser agents.</strong></p>
-  <p>The agent understands the machine. You bring the observations, judgment, approval, and hands.</p>
-
-  <p>
-    <a href="https://repair-webmcp.vercel.app"><strong>Open the live repair bench</strong></a>
-    ·
-    <a href="./src/content/aurelia-s1.repair-graph.json">Inspect the Repair Graph</a>
-    ·
-    <a href="./docs/demo-script.md">Run the demo</a>
-  </p>
+  <p><strong>Show what needs fixing. Understand the evidence. Choose a safer next step.</strong></p>
+  <p><a href="https://repair-webmcp.vercel.app"><strong>Open RE:PAIR</strong></a> · <a href="./docs/demo-script.md">Demo script</a> · <a href="./docs/generation-pipeline.md">Generation pipeline</a></p>
 </div>
 
-## The repair in one prompt
+RE:PAIR turns a photo of an everyday object into a shared repair workspace for a person and a browser agent. The person chooses the image, consents to external processing, corrects what the system understood, supplies real-world observations, and retains authority over every physical decision. The system provides visible hypotheses, synchronized hotspots, an optional generated 3D view, and cautious next-step guidance.
 
-Open the live app and give a WebMCP-capable browser agent this exact prompt:
+The sample lamp remains available as a fallback, but the product is no longer limited to one scripted object.
 
-> It charges but dies after five minutes. Help me fix it for under $20.
+## Product flow
 
-The agent reads the visible bench, narrows the relevant components, stages safe checks, records the person's observations, runs deterministic fault rules, compares outcomes, and prepares a compatible repair plan. The person remains responsible for every physical observation, approval, repair step, and verification.
+1. Choose or drop a JPEG, PNG, or WebP image and optionally describe the problem.
+2. Review the local preview and explicitly consent before the image leaves the browser.
+3. OpenAI returns structured identification, visible condition, possible issues, uncertainty, hotspots, questions, and a safety classification.
+4. The configured image-to-3D provider receives a clean reference and returns a GLB when generation succeeds.
+5. The person answers clarifying questions through visible controls.
+6. OpenAI drafts cautious guidance. High-risk objects stop on a deterministic professional-help path.
 
-No browser agent is required. Select `Explore manually` to complete the same repair through the interface.
+The canvas is an enhancement. The uploaded photo, hotspot buttons, semantic hotspot list, questions, and repair guidance remain usable if generation fails, a signed model URL expires, WebGL is unavailable, or remote CORS policy blocks the GLB.
 
-## Why RE:PAIR exists
+## Architecture
 
-Repair knowledge is usually split across manuals, videos, forum posts, and part listings. A person has the object but may not know the system. An agent can reason over structured knowledge but cannot hold a probe, smell a burnt component, inspect a loose wire, or accept physical risk.
+```mermaid
+flowchart LR
+  Person[Person] --> UI[Upload-first React workspace]
+  Agent[Browser agent] --> Runtime[Observable WebMCP runtime]
+  Demo[Guided demo] --> Runtime
+  UI --> Actions[Shared versioned action layer]
+  Runtime --> Actions
+  Actions --> Store[Session-only Zustand workspace]
+  Store --> UI
+  Actions --> Client[Typed generation client]
+  Client --> Analyze[Object analysis API]
+  Client --> Model[Model start and polling API]
+  Client --> Plan[Repair plan API]
+  Analyze --> OpenAI[OpenAI Responses]
+  Model --> ImageEdit[Optional OpenAI image edit]
+  Model --> Provider[Configured image-to-3D provider]
+  Plan --> OpenAI
+  Provider --> GLB[Generated GLB]
+  GLB --> Scene[React Three Fiber scene]
+  Scene --> UI
+```
 
-RE:PAIR gives both sides one inspectable workspace. The competition build follows a fictional Aurelia S1 solar study lamp from a short-runtime symptom to a verified battery replacement. It is intentionally one complete repair, not a shallow device catalogue.
+The server does not store uploaded images, jobs, or provider payloads. It validates image bytes and dimensions, binds the image and analysis to a short-lived signed session, wraps provider job IDs in opaque signed tokens, and returns only validated public contracts. OpenAI analysis uses `store: false`. OpenAI and the configured 3D provider still process the image under their respective data policies.
 
 ```mermaid
 sequenceDiagram
   actor Person
+  participant UI as RE:PAIR workspace
   participant Agent as Browser agent
-  participant Bench as RE:PAIR bench
-  participant Engine as Diagnostic engine
+  participant API as Serverless API
+  participant OpenAI
+  participant Provider as 3D provider
 
-  Person->>Agent: Reports symptom and $20 limit
-  Agent->>Bench: Reads state and sets repair goal
-  Agent->>Bench: Focuses the power system
-  Bench-->>Person: Presents only safe checks
-  Person->>Bench: Supplies physical observations
-  Bench->>Engine: Evaluates deterministic rules
-  Engine-->>Bench: Returns ranked causes and evidence codes
-  Agent->>Bench: Compares outcomes and stages a plan
-  Person->>Bench: Approves and completes physical steps
-  Person->>Bench: Verifies restored operation
-  Bench-->>Person: Shows the complete provenance trail
+  Person->>UI: Selects photo and grants consent
+  UI->>UI: Compresses and keeps a local fallback
+  UI->>API: Analyze image
+  API->>OpenAI: Structured visual analysis, store false
+  OpenAI-->>UI: Hypotheses, hotspots, questions, safety
+  opt Safe category
+    UI->>API: Start 3D generation
+    API->>Provider: Prepared reference image
+    loop Bounded backoff
+      UI->>API: Poll signed job
+      API->>Provider: Read provider status
+    end
+    Provider-->>UI: Validated GLB URL
+  end
+  Agent->>UI: Focuses visible context or opens a human question
+  Person->>UI: Supplies observation
+  UI->>API: Draft cautious plan
+  API->>OpenAI: Signed analysis plus human observations
+  OpenAI-->>UI: Evidence, unknowns, stop conditions, next action
 ```
 
-## What makes the demo work
+## Visible browser-agent activity
 
-- A semantic, interactive 3D lamp with a mechanically coherent exploded view.
-- Twelve narrow WebMCP tools registered on the top-level document.
-- Stage-aware tool availability, strict schemas, cancellation checks, and optimistic versioning.
-- A pure diagnostic engine that returns the same ranking for the same observations.
-- A shared action layer used by the React interface and WebMCP handlers.
-- Explicit provenance for human actions, agent actions, state versions, and reversals.
-- Repair, wired reuse, and whole-device replacement compared by cost, time, risk, and waste.
-- A complete manual path when WebMCP is absent.
-- A semantic HTML twin and static fallback when WebGL is unavailable.
-- No backend, account, API key, analytics service, or remote runtime data source.
+The activity dock is always discoverable. It shows the currently available action count and groups each invocation into one visible record with:
 
-## System architecture
+- `Browser agent` or `Guided demo` source labeling;
+- requested, running, succeeded, failed, or cancelled state;
+- timestamp and elapsed time;
+- bounded, redacted input and result summaries;
+- the visible workspace target and resulting change.
 
-```mermaid
-flowchart LR
-  subgraph Inputs
-    Human[Human interface]
-    Agent[Browser agent]
-  end
+The runtime never displays chain-of-thought, image base64, credentials, bearer/session tokens, or signed provider URLs. Every mutating browser-agent action changes visible state. An agent can open the uploader but cannot choose a local file; it can open a question but cannot answer for the person; it can draft guidance but cannot approve or mark physical work complete.
 
-  subgraph Contract[WebMCP contract]
-    Context[document.modelContext]
-    Tools[Stage-aware tools]
-    Schemas[Zod to Draft 7 JSON Schema]
-  end
+When WebMCP is unavailable, the status reads `Manual mode` and the same product path remains usable through human controls.
 
-  subgraph Domain[Repair domain]
-    Actions[Named domain actions]
-    Store[Vanilla Zustand store]
-    Graph[Open Repair Graph 0.1]
-    Rules[Pure diagnostic engine]
-  end
+## Safety and authority
 
-  subgraph Outputs
-    UI[React interface]
-    Scene[Demand-rendered R3F scene]
-    Semantic[Semantic HTML twin]
-    Local[Versioned local persistence]
-    Trail[Provenance trail]
-  end
-
-  Human --> UI --> Actions
-  Agent --> Context --> Tools --> Actions
-  Schemas --> Tools
-  Graph --> Rules --> Actions
-  Graph --> Actions
-  Actions --> Store
-  Store --> UI
-  Store --> Scene
-  Store --> Semantic
-  Store --> Local
-  Store --> Trail
-```
-
-The Repair Graph is parsed once at the domain boundary. Zod validates graph data and tool inputs, then generates the strict Draft 7 schemas exposed to WebMCP. The diagnostic engine has no dependency on time, randomness, UI state, or network state. React and WebMCP call the same store actions, so an agent action always changes the interface the person can see.
-
-## Human and agent authority
-
-```mermaid
-flowchart TB
-  subgraph Agent[Browser agent may]
-    Read[Read state and components]
-    Focus[Focus visible context]
-    Record[Record a reported observation]
-    Reason[Run rules and compare outcomes]
-    Stage[Stage a reversible plan and part]
-  end
-
-  Shared[Shared, versioned repair bench]
-
-  subgraph Human[Person must]
-    Observe[Make physical observations]
-    Approve[Approve the plan]
-    Act[Complete each physical step]
-    Verify[Verify the result]
-  end
-
-  Agent --> Shared
-  Human --> Shared
-  Shared --> Trail[Visible provenance]
-```
-
-There is no tool for approval, purchase, physical-step completion, or final verification. The agent can stage and explain. The person must observe, approve, act, and verify.
+Analysis and repair causes are always presented as hypotheses. Guidance includes evidence for, evidence against, unknowns, limitations, and stop conditions before any step. Mains electricity, damaged batteries, gas systems, medical devices, weapons, structural systems, vehicle safety systems, and unknown chemicals can force a professional-help-only stop.
 
 | Capability | Person | Browser agent |
 | --- | :---: | :---: |
-| Read state and inspect components | Yes | Yes |
-| Focus the visible repair bench | Yes | Yes |
-| Record a reported observation | Yes | Yes |
-| Run deterministic diagnosis | Yes | Yes |
-| Compare repair outcomes | Yes | Yes |
-| Stage a plan and compatible part | Yes | Yes |
-| Approve the repair plan | Yes | No tool |
-| Complete a physical step | Yes | No tool |
-| Verify the physical result | Yes | No tool |
-| Purchase a part | No checkout | No tool |
+| Select and consent to send a local image | Yes | No |
+| Correct the displayed object name | Yes | No |
+| Focus a visible hotspot | Yes | Yes |
+| Make and record a physical observation | Yes | No |
+| Open an unanswered observation request | Yes | Yes |
+| Start or cancel analysis and generation | Yes | Yes |
+| Draft cautious guidance | Yes | Yes |
+| Approve or complete physical work | Yes | No tool |
 
-## WebMCP tool surface
+## Image and lifecycle behavior
 
-RE:PAIR follows the current [WebMCP imperative API](https://developer.chrome.com/docs/ai/webmcp/imperative-api). Tools register through `document.modelContext` on the top-level page. Read tools remain broadly discoverable, while write tools appear only when their stage preconditions are satisfied.
+The browser accepts source images up to 24 MB, renders an immediate object-URL preview, then downsizes the long edge to at most 2,048 pixels and encodes JPEG below 2.9 MB. The API independently enforces a 3,000,000-byte decoded limit, a 16,384-pixel per-dimension limit, and a 40-million-pixel limit.
 
-| Tool | Kind | Purpose |
-| --- | --- | --- |
-| `get_bench_state` | Read | Return the current stage, version, progress, and allowed next actions. |
-| `set_repair_goal` | Write | Record the known symptom and maximum USD budget. |
-| `inspect_component` | Read | Return a component's role, evidence, status, and checks. |
-| `focus_component` | Write | Select a known component on the visible bench. |
-| `list_safe_checks` | Read | Return checks whose prerequisites and safety rules are satisfied. |
-| `record_observation` | Write | Store a structured human-reported or simulated observation. |
-| `diagnose_faults` | Read | Run deterministic rules and return ranked causes with evidence. |
-| `compare_repair_options` | Read | Compare repair, reuse, and replacement against the stored limit. |
-| `stage_repair_plan` | Write | Prepare a reversible plan for human review. |
-| `focus_repair_step` | Write | Focus one instruction and its related components without completing it. |
-| `stage_part_cart` | Write | Stage a compatible fictional part locally without purchasing it. |
-| `undo_agent_action` | Write | Reverse the latest eligible agent write and record the reversal. |
+The original `File` remains only in memory until generation reaches a terminal state or the task is cancelled. The compressed image remains available in the current session for retry and planning. Object URLs are revoked when replaced, removed, reset, or unmounted. No uploaded image, signed token, answer, or provenance entry is written to `localStorage`.
 
-Every visible write requires an `expectedStateVersion`, checks its `AbortSignal` before mutation, validates input with a strict schema, and records provenance. Individual serialized results are capped below 1,500 characters.
+Generation polling uses bounded exponential backoff and a fixed attempt ceiling. `AbortController` cancellation propagates through compression and API requests. Terminal failures return to the interactive photo instead of leaving a blank visual area.
 
-## Open Repair Graph 0.1
+## Environment
 
-The graph connects machine structure, safe observation, diagnosis, outcomes, parts, repair steps, 3D focus, and provenance without accepting executable instructions or free-form agent prompts as data.
+Production requires these server-side variables:
 
-```mermaid
-flowchart LR
-  Device[Device] --> Components[Stable component IDs]
-  Components --> Checks[Safe checks]
-  Checks --> Observations[Typed observations]
-  Observations --> Hypotheses[Diagnostic hypotheses]
-  Hypotheses --> Options[Repair, reuse, replace]
-  Options --> Parts[Compatible parts]
-  Options --> Plans[Human-only repair steps]
-  Plans --> Verification[Verification criteria]
-  Device --> Safety[Stop conditions]
-  Safety --> Checks
-  Device --> ORDS[Open Repair Data mapping]
-```
-
-The validated fixture lives at [`src/content/aurelia-s1.repair-graph.json`](./src/content/aurelia-s1.repair-graph.json). Its generated schema is [`docs/repair-graph.schema.json`](./docs/repair-graph.schema.json). Stable component IDs are shared by geometry, labels, checks, hypotheses, plan steps, focus targets, and the semantic text view.
-
-### Deterministic diagnosis
-
-| Human observation | Diagnostic effect |
+| Variable | Requirement |
 | --- | --- |
-| Charge indicator is steady green | Lowers charge-controller failure. |
-| Battery reads 3.26 V with the lamp off | Shows that the cell accepts surface charge. |
-| Battery falls to 2.31 V under load | Strongly raises high internal resistance. |
-| Battery rebounds to 3.08 V after switch-off | Confirms the voltage-sag pattern. |
+| `OPENAI_API_KEY` | Required OpenAI server credential. |
+| `OPENAI_ANALYSIS_MODEL` | Required model with image input and Structured Outputs support. |
+| `IMAGE_TO_3D_PROVIDER` | Required; currently `meshy`. |
+| `MESHY_API_KEY` | Required Meshy server credential. |
+| `SESSION_SIGNING_SECRET` | Required random value of at least 32 bytes. |
 
-The result is `Likely cause: battery cell wear`, accompanied by evidence for and against each hypothesis. RE:PAIR does not invent probability-like confidence values for a rules-based result.
+Optional variables are `OPENAI_IMAGE_MODEL`, `SESSION_TTL_SECONDS`, `OPENAI_TIMEOUT_MS`, and `IMAGE_TO_3D_TIMEOUT_MS`. `GENERATION_MOCK_MODE=true` enables deterministic local generation outside production and is ignored in production.
 
-## 3D scene and accessible twin
+Abuse protection is deployment configuration, not a browser-visible secret. Before enabling the production pipeline, configure and verify suitable Vercel Firewall/rate-limiting controls for the three API routes. Same-origin enforcement remains active in the API.
 
-<div align="center">
-  <img src="./public/fallback-lamp.webp" alt="Static fallback render of the Aurelia S1 solar study lamp" width="720" />
-</div>
+Never expose server credentials through `VITE_` variables or commit them to source control.
 
-The canvas is an enhancement, not the only interface. A synchronized HTML component hierarchy exposes the same selection, component state, diagnostic status, and focus actions. If WebGL fails, the static render above preserves product context while the full manual workflow remains available.
+## Local development
 
-The interface also includes visible focus, 44 px targets, live announcements, keyboard controls, reduced-motion behavior, color-independent state labels, mobile layouts, and support for 200 percent zoom.
-
-React Three Fiber runs the scene in demand mode, so the renderer sleeps while the workbench is still. Procedural geometry keeps semantic component boundaries intact and removes the need for a large external 3D asset.
-
-## Safety model
-
-The Aurelia S1, its values, and its parts are fictional. RE:PAIR is an interactive simulation, not live electrical instruction for a real product.
-
-Swelling, heat, physical damage, odor, corrosion, or damaged insulation stops the guided path. The experience never instructs a person to puncture, heat, bend, short, or open a battery cell. A stop condition outranks progress through the demo.
-
-## Technology
-
-| Layer | Choice |
-| --- | --- |
-| Application | React 19, TypeScript 7, Vite 8 |
-| 3D | Three.js, React Three Fiber, Drei |
-| State | Vanilla Zustand store with React selectors |
-| Validation | Zod with generated Draft 7 JSON Schema |
-| Motion | Motion with shared reduced-motion policy |
-| Icons | Private licensed IconJar catalogue through one semantic wrapper |
-| Browser-agent contract | WebMCP imperative API |
-| Unit and integration tests | Vitest, Testing Library, jsdom |
-| Browser coverage | Playwright and axe-core |
-| Code quality | Biome and TypeScript project references |
-| Hosting | Static Vercel deployment |
-
-## Run locally
-
-Requirements:
-
-- Node.js 26
-- pnpm 11.7.0
+Requirements: Node.js 26 and pnpm 11.7.0.
 
 ```bash
 pnpm install
-pnpm dev
+GENERATION_MOCK_MODE=true pnpm dev
 ```
 
-No login, API key, backend, or remote data source is required. Vite prints the local URL when the development server starts.
+Use a local serverless-compatible environment when exercising `/api/object/*`; the Vite-only development server does not execute Vercel functions.
 
 ## Validation
 
 ```bash
-pnpm test:domain
-pnpm test:webmcp
 pnpm test:ui
 pnpm typecheck
 pnpm check
+pnpm test
 pnpm build
 pnpm budget
+git diff --check
 ```
 
-The focused suites cover graph validation, the canonical battery diagnosis, a stable-voltage counterexample, safety stops, stale and cancelled writes, incompatible parts, agent undo, dynamic tool registration, output limits, the complete manual path, and the complete mocked WebMCP path.
+Tests cap Vitest at two workers. Browser coverage is authored under `tests/e2e`, but should only be run with explicit browser-automation permission.
 
-Playwright and axe coverage is available through `pnpm test:e2e` and is capped at two workers.
-
-### Performance budgets
-
-| Boundary | Budget |
-| --- | ---: |
-| Initial application, gzip | 150 KB |
-| Deferred 3D scene, gzip | 450 KB |
-| Product and social assets | 1.5 MB |
-
-`pnpm budget` reads the production manifest, calculates dependency closures, compresses emitted bundles, and exits nonzero if any boundary is exceeded.
+Performance budgets remain 150 KB gzip for the initial application, 450 KB gzip for the deferred 3D scene, and 1.5 MB for product/social assets.
 
 ## Project map
 
 ```text
-src/
-├── app/                 Application shell and global layout
-├── bench/               Repair panels, controls, and provenance UI
-├── content/             Validated Aurelia S1 Repair Graph
-├── design/              Tokens and interface iconography
-├── domain/              Schemas, state, actions, diagnosis, persistence
-├── scene/               Procedural lamp, camera, motion, quality policy
-└── webmcp/              Tool schemas, registration, handlers, results
-tests/
-├── domain/              Graph, store, and diagnostic rules
-├── e2e/                 Manual path and accessibility browser coverage
-├── scene/               Motion policy
-├── ui/                  Complete manual workflow
-└── webmcp/              Contracts and canonical agent trace
-docs/                    Schema, demo script, and submission copy
-evals/                   Deterministic prompts and expected traces
-scripts/                 Schema generation and bundle budgets
-public/                  Social card and WebGL fallback imagery
+api/object/          Stateless analyze, model, and plan routes
+src/agent-runtime/   Observable and redacted WebMCP runtime
+src/generation/      Typed client and public generation contracts
+src/workspace/       Session store, shared actions, controller, and selectors
+src/bench/           Upload, analysis, visual workspace, guidance, and activity UI
+src/scene/           Generated GLB scene, loading/error boundaries, camera controls
+tests/ui/            Manual, failure, polling, safety, and activity coverage
+docs/                Pipeline, demo, and submission documentation
 ```
-
-## Production
-
-The app is deployed at [repair-webmcp.vercel.app](https://repair-webmcp.vercel.app).
-
-Build the production output with:
-
-```bash
-pnpm build
-```
-
-Deploy the linked project with:
-
-```bash
-vercel --prod
-```
-
-Vercel serves the static Vite output with the security headers declared in [`vercel.json`](./vercel.json).
-
-## Submission resources
-
-- [`docs/demo-script.md`](./docs/demo-script.md) contains the timed 2 minute 45 second demo.
-- [`docs/submission-copy.md`](./docs/submission-copy.md) contains short and full competition descriptions.
-- [`evals/prompts.json`](./evals/prompts.json) contains repeatable evaluation prompts.
-- [`evals/expected-traces.json`](./evals/expected-traces.json) contains deterministic expected traces.
-- [`REPAIR_MASTER_PLAN.md`](./REPAIR_MASTER_PLAN.md) records product decisions, constraints, and acceptance criteria.
-
-## License and assets
-
-Code and original project assets are available under the [MIT License](./LICENSE). Interface icons come from the separately licensed private IconJar package and are not covered by the MIT License. The procedural 3D model and product imagery are original. The fallback lamp and social imagery were created specifically for RE:PAIR with OpenAI image generation. No third-party model, texture, product content, analytics script, or runtime CDN asset ships with the application. See [`NOTICE.md`](./NOTICE.md).

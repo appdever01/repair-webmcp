@@ -1,64 +1,46 @@
+import { type AgentActivityStore, useAgentActivityStore } from "../agent-runtime";
 import { RepairIcon } from "../design/RepairIcon";
-import { selectStage } from "../domain/selectors";
-import { useRepairStore } from "../domain/useRepairStore";
+import { workspaceStore } from "../workspace";
 
-const stageLabels = {
-  intake: "Intake",
-  inspect: "Inspect",
-  check: "Safe check",
-  diagnose: "Diagnose",
-  compare: "Compare",
-  staged: "Plan staged",
-  approved: "Plan approved",
-  repair: "Repair",
-  verify: "Verify",
-  restored: "Restored",
-  stopped: "Safety stop",
-} as const;
-
-export function TopRail() {
-  const stage = useRepairStore(selectStage);
-  const webmcpAvailable = useRepairStore((state) => state.webmcpAvailable);
-  const resetSession = useRepairStore((state) => state.resetSession);
+export function TopRail({ activityStore }: { activityStore: AgentActivityStore }) {
+  const activity = useAgentActivityStore(activityStore);
+  const latest = new Map<string, (typeof activity.events)[number]>();
+  for (const event of activity.events) latest.set(event.correlationId, event);
+  const running = [...latest.values()].filter(
+    (event) => event.phase === "requested" || event.phase === "running",
+  );
+  const agentActive = running.some((event) => event.source === "webmcp");
+  const demoActive = running.some((event) => event.source === "demo");
+  const status = agentActive
+    ? "Browser agent active"
+    : demoActive
+      ? "Guided demo active"
+      : activity.connectionState === "ready"
+        ? "Browser agent ready"
+        : "Manual mode";
 
   return (
     <header className="top-rail">
-      <div className="wordmark">
-        <span>RE</span>
-        <span aria-hidden="true" className="wordmark-mark">
-          :
-        </span>
-        <span>PAIR</span>
+      <a className="wordmark" href="#main-content" aria-label="RE:PAIR home">
+        RE<span aria-hidden="true">:</span>PAIR
+      </a>
+      <p>Understand the object. Choose a safer next step.</p>
+      <div className="agent-status" data-active={agentActive || demoActive}>
+        <span aria-hidden="true" />
+        {status}
       </div>
-      <div className="device-title">Aurelia S1</div>
-      <div className="stage-name">
-        <span className="sr-only">Current stage: </span>
-        {stageLabels[stage]}
-      </div>
-      <div className="tool-status">
-        <span aria-hidden="true" data-ready={webmcpAvailable} />
-        {webmcpAvailable ? "Tools ready" : "Manual ready"}
-      </div>
-      <details className="bench-menu">
-        <summary aria-label="Bench menu">
-          <RepairIcon name="more" />
-        </summary>
-        <div>
-          <strong>Bench controls</strong>
-          <button
-            type="button"
-            onClick={() => {
-              if (
-                window.confirm("Reset this RE:PAIR demonstration and remove its local history?")
-              ) {
-                resetSession();
-              }
-            }}
-          >
-            Reset demonstration
-          </button>
-        </div>
-      </details>
+      <button
+        type="button"
+        className="quiet-icon-button"
+        aria-label="Reset workspace"
+        onClick={() => {
+          if (window.confirm("Reset this workspace and remove the selected photo from memory?")) {
+            workspaceStore.getState().reset();
+          }
+        }}
+      >
+        <RepairIcon name="reset" />
+      </button>
     </header>
   );
 }

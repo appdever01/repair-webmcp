@@ -2,27 +2,35 @@
 
 ## Short description
 
-RE:PAIR is a living 3D repair manual where a browser agent understands the machine and a person brings observations, judgment, approval, and physical action.
+RE:PAIR turns a photo of an everyday object into an accessible repair workspace with visible browser-agent activity, synchronized 2D/3D hotspots, human-owned observations, and cautious next-step guidance.
 
 ## Full description
 
-Repair information is scattered across manuals, videos, forums, and part listings. A person has the object but may not understand the whole system. A browser agent can interpret structured knowledge but cannot see a loose wire, hold a probe, approve risk, or complete a physical step.
+Most people start a repair with an object and a phone photo, not a service manual. RE:PAIR meets them there. A person uploads a JPEG, PNG, or WebP image, sees an immediate local preview, adds optional context, and explicitly consents before external processing begins.
 
-RE:PAIR gives both sides one inspectable workbench. Its competition demo follows the fictional Aurelia S1 solar study lamp from a five-minute runtime symptom to a verified battery replacement. The agent uses narrow WebMCP tools to read state, focus components, list safe checks, record a person's observations, run deterministic fault rules, compare outcomes, and stage a compatible plan and part. Approval, purchase, physical completion, and verification remain outside the agent tool surface.
+OpenAI returns a strict analysis describing the likely object, visible condition, possible issues, uncertainty, repair hotspots, clarifying questions, stop conditions, and safety category. The person can correct the displayed object name without invalidating the server-signed analysis. When safe, the configured image-to-3D provider builds a GLB from a prepared reference. React Three Fiber provides orbit, zoom, reset, and keyboard-accessible camera alternatives.
 
-The semantic Repair Graph 0.1 format connects component identity, safety rules, observations, explanation codes, repair options, compatible parts, 3D focus, and provenance. React, Three.js, React Three Fiber, Zustand, and Zod run entirely in a static client application. There is no backend, account, embedded model, analytics service, or remote runtime data source.
+The 3D canvas is never the only path. A model-generation, loading, expiry, WebGL, or CORS failure preserves the interactive uploaded photo and the semantic hotspot list. Photo hotspots, 3D overlays, list selections, and browser-agent focus actions all update one shared focus state.
 
-The canvas is an enhancement. A synchronized HTML component hierarchy provides the same selection and state information, with keyboard controls, reduced motion, responsive layouts, visible focus, live announcements, and a static fallback for WebGL failure.
+Clarifying answers are entered only through explicit human controls. Repair guidance treats every cause as a hypothesis and presents evidence for, evidence against, unknowns, limitations, and stop conditions before one clear next action. High-risk categories take a deterministic professional-help-only path with no actionable repair instructions.
+
+RE:PAIR also makes WebMCP observable. An always-discoverable activity dock reports the number of available actions and shows each tool’s source, title, lifecycle, timestamp, elapsed time, redacted summaries, and resulting visible change. Real calls are labeled `Browser agent`; local scripted invocations are labeled `Guided demo`. Image base64, credentials, session tokens, signed provider URLs, and chain-of-thought are never displayed.
+
+The browser agent may read state, open the uploader, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, grant consent, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
+
+## Architecture summary
+
+- React 19, TypeScript, Vite, Zustand, Zod, Three.js, React Three Fiber, and Drei.
+- Stateless same-origin serverless APIs for OpenAI analysis, optional image normalization, signed provider-job polling, and repair-plan drafting.
+- Short-lived HMAC tokens bind the selected image and immutable analysis without storing either.
+- Client-side image compression, abort propagation, bounded polling backoff, session-only provenance, and object-URL cleanup.
+- Observable stage-aware WebMCP registration with strict schemas, optimistic state-version checks, cancellation, redaction, and visible effects for every mutation.
+- Private IconJar package exposed only through the shared `RepairIcon` component.
 
 ## Human and agent contract
 
-The agent may understand and stage. The person must observe, approve, act, and verify.
+The agent may understand, navigate, and draft. The person must select, consent, observe, approve, act, and verify.
 
-## Competition category notes
+## Safety statement
 
-- WebMCP tools are registered imperatively on the top-level document.
-- Every visible tool write uses optimistic state versioning.
-- Tool registration changes with repair stage through abortable groups.
-- Tool inputs and Repair Graph data are validated by Zod.
-- Diagnostic ranking is deterministic and tested.
-- Every durable event records actor, origin, versions, timestamp, and changes.
+RE:PAIR offers cautious informational guidance from limited evidence. It does not confirm hidden condition, exact compatibility, or professional safety. Any stop condition or professional-help classification outranks product progress.

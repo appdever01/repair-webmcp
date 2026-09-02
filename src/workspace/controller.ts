@@ -1,0 +1,64 @@
+import type {
+  HumanObservationRequestInput,
+  WorkspaceActionContext,
+  WorkspaceController,
+  WorkspaceSnapshot,
+} from "../agent-runtime";
+import type { WorkspaceStore } from "./store";
+
+function snapshot(store: WorkspaceStore): WorkspaceSnapshot {
+  const state = store.getState();
+  const unansweredHumanQuestions =
+    state.analysis?.clarifyingQuestions.flatMap((prompt, index) => {
+      const id = `question.${index + 1}`;
+      return state.answers.some((answer) => answer.questionId === id) ? [] : [{ id, prompt }];
+    }) ?? [];
+  const safetyStop =
+    state.analysis?.safety.riskLevel === "professional_help_only"
+      ? {
+          code: state.analysis.safety.categories[0] ?? "professional-help",
+          title: "Qualified help required",
+        }
+      : null;
+  return {
+    stage: state.stage,
+    imageSelected: state.image !== null,
+    analysisExists: state.analysis !== null,
+    generationStatus: state.generationStatus,
+    hotspots: state.analysis?.hotspots.map(({ id, label }) => ({ id, label })) ?? [],
+    unansweredHumanQuestions,
+    planExists: state.plan !== null,
+    stateVersion: state.stateVersion,
+    reversibleActivity: state.reversibleActivity,
+    safetyStop,
+  };
+}
+
+function options(context: WorkspaceActionContext) {
+  return {
+    expectedStateVersion: context.expectedStateVersion,
+    source: context.source,
+    signal: context.signal,
+    correlationId: context.correlationId,
+  } as const;
+}
+
+export function createWorkspaceController(store: WorkspaceStore): WorkspaceController {
+  return {
+    getSnapshot: () => snapshot(store),
+    subscribe: (listener) => store.subscribe(listener),
+    openImageUploader: (context) => store.getState().openImageUploader(options(context)),
+    analyzeUploadedObject: (context) => store.getState().analyzeUploadedObject(options(context)),
+    start3DGeneration: (context) => store.getState().start3DGeneration(options(context)),
+    refreshGenerationStatus: (context) =>
+      store.getState().refreshGenerationStatus(options(context)),
+    focusHotspot: (hotspotId, context) =>
+      store.getState().focusHotspot(hotspotId, options(context)),
+    requestHumanObservation: (input: HumanObservationRequestInput, context) =>
+      store.getState().requestHumanObservation(input.questionId, options(context)),
+    draftRepairPlan: (context) => store.getState().draftRepairPlan(options(context)),
+    cancelCurrentTask: (context) => store.getState().cancelCurrentTask(options(context)),
+    undoAgentAction: (activityId, context) =>
+      store.getState().undoAgentAction(activityId, options(context)),
+  };
+}

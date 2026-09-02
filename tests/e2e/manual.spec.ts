@@ -1,27 +1,30 @@
+import { Buffer } from "node:buffer";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-test("manual repair reaches restored state", async ({ page }) => {
+test("manual upload remains consent gated and removable", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Explore manually" }).click();
-  await page.getByRole("button", { name: "Open power system" }).click();
-  await page.getByRole("button", { name: "Record steady-green" }).click();
-  await page.getByRole("button", { name: "Sleeve looks normal" }).click();
-  await page.getByRole("button", { name: "Record 3.26 V" }).click();
-  await page.getByRole("button", { name: "Record 2.31 V" }).click();
-  await page.getByRole("button", { name: "Record 3.08 V" }).click();
-  await page.getByRole("button", { name: "Stage plan" }).click();
-  await page.getByRole("button", { name: "Stage compatible part" }).click();
-  await page.getByRole("button", { name: "Approve plan as the person" }).click();
-  for (let step = 0; step < 11; step += 1) {
-    await page.getByRole("button", { name: "I completed this physical step" }).click();
-  }
-  await page.getByRole("button", { name: "Confirm test passed" }).click();
-  await expect(page.getByRole("heading", { name: "The Aurelia S1 is lit again." })).toBeVisible();
+  await page.getByLabel("Choose a photo").setInputFiles({
+    name: "object.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await expect(page.getByAltText("Selected object preview")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Understand this object" })).toBeDisabled();
+  await page.getByRole("checkbox").check();
+  await expect(page.getByRole("button", { name: "Understand this object" })).toBeEnabled();
+  await page.getByRole("button", { name: "Remove" }).click();
+  await expect(page.getByAltText("Selected object preview")).toHaveCount(0);
 });
 
-test("intake has no automatically detectable accessibility violations", async ({ page }) => {
+test("upload-first intake has no automatically detectable accessibility violations", async ({
+  page,
+}) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Show us what needs fixing." })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations).toEqual([]);
 });

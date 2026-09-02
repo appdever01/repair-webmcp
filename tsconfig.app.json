@@ -14,7 +14,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "exactOptionalPropertyTypes": true,
-    "types": ["vite/client", "vitest/globals", "webmcp-types"],
+    "types": ["vite/client", "vitest/globals", "webmcp-types", "node"],
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",

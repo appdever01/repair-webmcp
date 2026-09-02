@@ -115,9 +115,12 @@ function safeTarget(
 
 export function selectAvailableAgentTools(snapshot: WorkspaceSnapshot): AgentToolName[] {
   const names: AgentToolName[] = ["get_workspace_state"];
-  const activeTask =
+  const stage = snapshot.stage.toLowerCase();
+  const generationActive =
     activeGenerationStatuses.has(snapshot.generationStatus) ||
-    ["analyzing", "generating", "processing"].includes(snapshot.stage.toLowerCase());
+    ["preparing", "generating", "processing", "finishing"].includes(stage);
+  const activeTask =
+    generationActive || ["uploading", "understanding", "analyzing", "planning"].includes(stage);
   if (snapshot.safetyStop) {
     if (activeTask) names.push("cancel_current_task");
     if (snapshot.reversibleActivity) names.push("undo_agent_action");
@@ -129,19 +132,22 @@ export function selectAvailableAgentTools(snapshot: WorkspaceSnapshot): AgentToo
   }
   if (
     snapshot.analysisExists &&
-    ["idle", "failed", "cancelled"].includes(snapshot.generationStatus)
+    ["idle", "failed", "cancelled"].includes(snapshot.generationStatus) &&
+    !activeTask
   ) {
     names.push("start_3d_generation");
   }
   if (activeTask) {
-    names.push("get_generation_status", "cancel_current_task");
+    if (generationActive) names.push("get_generation_status");
+    names.push("cancel_current_task");
   }
   if (snapshot.hotspots.length > 0) names.push("focus_hotspot");
   if (snapshot.unansweredHumanQuestions.length > 0) names.push("request_human_observation");
   if (
     snapshot.analysisExists &&
     snapshot.unansweredHumanQuestions.length === 0 &&
-    !snapshot.planExists
+    !snapshot.planExists &&
+    !activeTask
   ) {
     names.push("draft_repair_plan");
   }
