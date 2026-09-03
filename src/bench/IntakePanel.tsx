@@ -238,7 +238,6 @@ export function IntakePanel() {
               </button>
             )}
             <div className="upload-card-footer">
-              <p className="upload-disclosure">Sent to OpenAI only when you start.</p>
               <div className="sample-action">
                 <span>No photo?</span>
                 <span className="sample-action-group">

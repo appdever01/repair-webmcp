@@ -79,7 +79,7 @@ describe("upload-first manual experience", () => {
       "href",
       "https://github.com/appdever01/repair-webmcp",
     );
-    expect(screen.getByText("Sent to OpenAI only when you start.")).toBeInTheDocument();
+    expect(screen.queryByText("Sent to OpenAI only when you start.")).not.toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "The things you actually use." }),
     ).toBeInTheDocument();
