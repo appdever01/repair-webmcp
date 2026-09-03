@@ -101,7 +101,7 @@ WebMCP ships behind a flag in Chrome 150 and newer and through a Chrome origin t
 
 Without a WebMCP browser, `Preview guided activity` inside the dock runs the same tool path locally and labels it `Guided demo`.
 
-The runtime prefers `document.modelContext` and falls back to the older `navigator.modelContext`. Registration is diff-based: only newly available tools are registered and only retired tools are unregistered, so the browser never sees a duplicate name, and a refresh waits for in-flight calls so a mutation that retires its own tool still returns its result. Real-browser behavior is exercised with Chrome for Testing 151 launched with `--enable-features=WebMCPTesting`, which exposes `document.modelContext.getTools()` and `executeTool()`.
+The runtime prefers `document.modelContext` and falls back to the older `navigator.modelContext`. Registration is diff-based: only newly available tools are registered and only retired tools are unregistered, so the browser never sees a duplicate name, and a refresh waits for in-flight calls so a mutation that retires its own tool still returns its result. Real-browser behavior is exercised by the `webmcp` Playwright project in `tests/e2e/webmcp.spec.ts`, which launches Chromium with `--enable-features=WebMCPTesting` and drives `document.modelContext.getTools()` and `executeTool()` against the built app: registration, a successful mutation, a stale-version rejection, and an undo that retires its own tool.
 
 ## Safety and authority
 

@@ -15,7 +15,19 @@ export default defineConfig({
     reuseExistingServer: true,
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["iPhone 13"], browserName: "chromium" } },
+    { name: "desktop", testMatch: /manual\.spec\.ts/, use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "mobile",
+      testMatch: /manual\.spec\.ts/,
+      use: { ...devices["iPhone 13"], browserName: "chromium" },
+    },
+    {
+      name: "webmcp",
+      testMatch: /webmcp\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: { args: ["--enable-features=WebMCPTesting"] },
+      },
+    },
   ],
 });
