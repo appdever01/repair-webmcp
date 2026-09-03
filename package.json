@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@iconjar/icons": "file:vendor/iconjar-stroke-standard-4.3.0-iconjar.2.tgz",
+    "@radix-ui/react-select": "^2.3.7",
     "@react-three/drei": "10.7.8",
     "@react-three/fiber": "9.7.0",
     "motion": "13.1.1",

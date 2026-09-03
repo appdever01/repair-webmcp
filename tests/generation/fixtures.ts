@@ -67,7 +67,6 @@ export function objectAnalysis(overrides: Partial<ObjectAnalysis> = {}): ObjectA
         radius: 0.08,
       },
     ],
-    clarifyingQuestions: ["Does the shade move when the lamp is unplugged?"],
     safety: {
       riskLevel: "caution",
       categories: ["ordinary"],

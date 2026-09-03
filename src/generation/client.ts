@@ -9,11 +9,19 @@ import {
   type DraftRepairPlanResponse,
   draftRepairPlanRequestSchema,
   draftRepairPlanResponseSchema,
+  type GenerateDiagnosticViewRequest,
+  type GenerateDiagnosticViewResponse,
   type GenerationErrorCode,
   type GetModelGenerationRequest,
   type GetModelGenerationResponse,
+  generateDiagnosticViewRequestSchema,
+  generateDiagnosticViewResponseSchema,
   getModelGenerationRequestSchema,
   getModelGenerationResponseSchema,
+  type NextQuestionRequest,
+  type NextQuestionResponse,
+  nextQuestionRequestSchema,
+  nextQuestionResponseSchema,
   type StartModelGenerationRequest,
   type StartModelGenerationResponse,
   startModelGenerationRequestSchema,
@@ -114,6 +122,48 @@ export async function analyzeObject(
       body: JSON.stringify(body),
     },
     analyzeObjectResponseSchema,
+    signal,
+  );
+}
+
+export async function generateDiagnosticView(
+  input: GenerateDiagnosticViewRequest,
+  signal: AbortSignal,
+): Promise<GenerateDiagnosticViewResponse> {
+  const parsed = generateDiagnosticViewRequestSchema.parse(input);
+  const { sessionToken, ...body } = parsed;
+  return requestJson(
+    "/api/object/diagnostic",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+    generateDiagnosticViewResponseSchema,
+    signal,
+  );
+}
+
+export async function getNextQuestion(
+  input: NextQuestionRequest,
+  signal: AbortSignal,
+): Promise<NextQuestionResponse> {
+  const parsed = nextQuestionRequestSchema.parse(input);
+  const { sessionToken, ...body } = parsed;
+  return requestJson(
+    "/api/object/question",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+    nextQuestionResponseSchema,
     signal,
   );
 }

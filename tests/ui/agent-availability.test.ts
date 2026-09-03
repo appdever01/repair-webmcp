@@ -9,6 +9,7 @@ function snapshot(values: Partial<WorkspaceSnapshot>): WorkspaceSnapshot {
     modelExists: false,
     exploded: false,
     hotspots: [],
+    questionStatus: "idle",
     unansweredHumanQuestions: [],
     planExists: false,
     stateVersion: 0,
@@ -47,5 +48,14 @@ describe("workspace-aware agent availability", () => {
         snapshot({ analysisExists: true, modelExists: true, generationStatus: "succeeded" }),
       ),
     ).toContain("explode_model");
+  });
+
+  it("withholds plan drafting until the adaptive interview is complete", () => {
+    expect(
+      selectAvailableAgentTools(snapshot({ analysisExists: true, questionStatus: "loading" })),
+    ).not.toContain("draft_repair_plan");
+    expect(
+      selectAvailableAgentTools(snapshot({ analysisExists: true, questionStatus: "complete" })),
+    ).toContain("draft_repair_plan");
   });
 });

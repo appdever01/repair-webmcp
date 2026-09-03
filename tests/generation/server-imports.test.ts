@@ -28,8 +28,10 @@ describe("serverless handler exports", () => {
     const routes = await Promise.all([
       import("../../api/object/analyze"),
       import("../../api/object/asset"),
+      import("../../api/object/diagnostic"),
       import("../../api/object/model"),
       import("../../api/object/plan"),
+      import("../../api/object/question"),
     ]);
     for (const route of routes) {
       expect(typeof route.default.fetch).toBe("function");

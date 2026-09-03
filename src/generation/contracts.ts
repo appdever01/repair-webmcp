@@ -61,7 +61,6 @@ export const objectAnalysisSchema = z
     visibleCondition: z.array(z.string().min(1).max(400)).max(20),
     possibleIssues: z.array(possibleIssueSchema).max(12),
     hotspots: z.array(analysisHotspotSchema).max(20),
-    clarifyingQuestions: z.array(z.string().min(1).max(300)).max(12),
     safety: safetyClassificationSchema,
     stopConditions: z.array(z.string().min(1).max(400)).min(1).max(20),
     providerSafeDescription: z.string().min(1).max(800),
@@ -80,6 +79,29 @@ export const analyzeObjectResponseSchema = z
     sessionToken: z.string().min(32).max(4_096),
     analysis: objectAnalysisSchema,
   })
+  .strict();
+
+export const diagnosticImageSchema = z
+  .object({
+    mediaType: imageMediaTypeSchema,
+    base64: z.string().min(4).max(12_000_000),
+  })
+  .strict();
+
+export const generateDiagnosticViewRequestSchema = z
+  .object({
+    sessionToken: z.string().min(32).max(4_096),
+    image: compressedImageSchema,
+    analysis: objectAnalysisSchema,
+  })
+  .strict();
+
+export const generateDiagnosticViewBodySchema = generateDiagnosticViewRequestSchema.omit({
+  sessionToken: true,
+});
+
+export const generateDiagnosticViewResponseSchema = z
+  .object({ image: diagnosticImageSchema })
   .strict();
 
 export const startModelGenerationRequestSchema = z
@@ -230,6 +252,65 @@ export const humanObservationSchema = z
   })
   .strict();
 
+export const adaptiveQuestionContentSchema = z
+  .object({
+    prompt: z.string().min(1).max(300),
+    why: z.string().min(1).max(400),
+    suggestedKind: observationKindSchema,
+    quickReplies: z.array(z.string().min(1).max(160)).min(2).max(4),
+    hotspotId: z.string().min(1).max(80).nullable(),
+  })
+  .strict();
+
+export const adaptiveQuestionSchema = adaptiveQuestionContentSchema.extend({
+  id: z.string().min(1).max(80),
+});
+
+export const questionAnswerSchema = z
+  .object({
+    questionId: z.string().min(1).max(80),
+    question: z.string().min(1).max(300),
+    observation: humanObservationSchema,
+  })
+  .strict();
+
+export const adaptiveQuestionDecisionSchema = z
+  .object({
+    status: z.enum(["ask", "ready"]),
+    question: adaptiveQuestionContentSchema.nullable(),
+    message: z.string().min(1).max(300),
+  })
+  .strict();
+
+export const nextQuestionRequestSchema = z
+  .object({
+    sessionToken: z.string().min(32).max(4_096),
+    image: compressedImageSchema,
+    analysis: objectAnalysisSchema,
+    problemDescription: z.string().trim().max(2_000),
+    answers: z.array(questionAnswerSchema).max(6),
+  })
+  .strict();
+
+export const nextQuestionBodySchema = nextQuestionRequestSchema.omit({ sessionToken: true });
+
+export const nextQuestionResponseSchema = z.discriminatedUnion("status", [
+  z
+    .object({
+      status: z.literal("ask"),
+      question: adaptiveQuestionSchema,
+      message: z.string().min(1).max(300),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal("ready"),
+      question: z.null(),
+      message: z.string().min(1).max(300),
+    })
+    .strict(),
+]);
+
 export const repairRiskLevelSchema = z.enum(["low", "moderate", "high", "professional_only"]);
 
 export const repairHypothesisSchema = z
@@ -275,7 +356,7 @@ export const draftRepairPlanRequestSchema = z
     sessionToken: z.string().min(32).max(4_096),
     analysis: objectAnalysisSchema,
     problemDescription: z.string().trim().max(2_000),
-    observations: z.array(humanObservationSchema).max(40),
+    answers: z.array(questionAnswerSchema).max(6),
   })
   .strict();
 
@@ -304,6 +385,10 @@ export type PossibleIssue = z.infer<typeof possibleIssueSchema>;
 export type ObjectAnalysis = z.infer<typeof objectAnalysisSchema>;
 export type AnalyzeObjectRequest = z.infer<typeof analyzeObjectRequestSchema>;
 export type AnalyzeObjectResponse = z.infer<typeof analyzeObjectResponseSchema>;
+export type DiagnosticImage = z.infer<typeof diagnosticImageSchema>;
+export type GenerateDiagnosticViewRequest = z.infer<typeof generateDiagnosticViewRequestSchema>;
+export type GenerateDiagnosticViewBody = z.infer<typeof generateDiagnosticViewBodySchema>;
+export type GenerateDiagnosticViewResponse = z.infer<typeof generateDiagnosticViewResponseSchema>;
 export type StartModelGenerationRequest = z.infer<typeof startModelGenerationRequestSchema>;
 export type StartModelGenerationBody = z.infer<typeof startModelGenerationBodySchema>;
 export type GenerationStatus = z.infer<typeof generationStatusSchema>;
@@ -315,6 +400,15 @@ export type GeneratedModel = z.infer<typeof generatedModelSchema>;
 export type GetModelGenerationResponse = z.infer<typeof getModelGenerationResponseSchema>;
 export type ObservationKind = z.infer<typeof observationKindSchema>;
 export type HumanObservation = z.infer<typeof humanObservationSchema>;
+export type AdaptiveQuestionContent = z.infer<typeof adaptiveQuestionContentSchema>;
+export type AdaptiveQuestion = z.infer<typeof adaptiveQuestionSchema>;
+export type QuestionAnswer = z.infer<typeof questionAnswerSchema>;
+export type AdaptiveQuestionDecision =
+  | { status: "ask"; question: AdaptiveQuestionContent; message: string }
+  | { status: "ready"; question: null; message: string };
+export type NextQuestionRequest = z.infer<typeof nextQuestionRequestSchema>;
+export type NextQuestionBody = z.infer<typeof nextQuestionBodySchema>;
+export type NextQuestionResponse = z.infer<typeof nextQuestionResponseSchema>;
 export type RepairRiskLevel = z.infer<typeof repairRiskLevelSchema>;
 export type RepairHypothesis = z.infer<typeof repairHypothesisSchema>;
 export type RepairPlanStep = z.infer<typeof repairPlanStepSchema>;

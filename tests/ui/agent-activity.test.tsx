@@ -11,6 +11,8 @@ function unusedServices(): WorkspaceServices {
   };
   return {
     analyzeObject: unavailable,
+    generateDiagnosticView: unavailable,
+    getNextQuestion: unavailable,
     startModelGeneration: unavailable,
     getModelGeneration: unavailable,
     draftRepairPlan: unavailable,

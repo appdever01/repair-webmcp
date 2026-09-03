@@ -1,8 +1,10 @@
 import Activity02Icon from "@iconjar/icons/Activity02Icon";
 import AiBrowserIcon from "@iconjar/icons/AiBrowserIcon";
 import Alert02Icon from "@iconjar/icons/Alert02Icon";
+import ArrowDown01Icon from "@iconjar/icons/ArrowDown01Icon";
 import ArrowLeft01Icon from "@iconjar/icons/ArrowLeft01Icon";
 import ArrowRight01Icon from "@iconjar/icons/ArrowRight01Icon";
+import ArrowUp01Icon from "@iconjar/icons/ArrowUp01Icon";
 import Camera01Icon from "@iconjar/icons/Camera01Icon";
 import CheckmarkCircle02Icon from "@iconjar/icons/CheckmarkCircle02Icon";
 import Copy01Icon from "@iconjar/icons/Copy01Icon";
@@ -25,6 +27,7 @@ import type { IconSvgElement } from "@iconjar/icons/react";
 import SearchVisualIcon from "@iconjar/icons/SearchVisualIcon";
 import ShieldCheckIcon from "@iconjar/icons/ShieldCheckIcon";
 import StopCircleIcon from "@iconjar/icons/StopCircleIcon";
+import Tick02Icon from "@iconjar/icons/Tick02Icon";
 import UndoIcon from "@iconjar/icons/UndoIcon";
 import ZoomInIcon from "@iconjar/icons/ZoomInIcon";
 import ZoomOutIcon from "@iconjar/icons/ZoomOutIcon";
@@ -39,6 +42,7 @@ export const ICONJAR_ICONS = {
   copy: Copy01Icon,
   cube: CubeIcon,
   delete: Delete02Icon,
+  down: ArrowDown01Icon,
   edit: Edit02Icon,
   forward: ArrowRight01Icon,
   history: HistoryIcon,
@@ -54,7 +58,9 @@ export const ICONJAR_ICONS = {
   reuse: Recycle03Icon,
   shield: ShieldCheckIcon,
   stop: StopCircleIcon,
+  tick: Tick02Icon,
   undo: UndoIcon,
+  up: ArrowUp01Icon,
   upload: ImageUploadIcon,
   warning: Alert02Icon,
   zoomIn: ZoomInIcon,

@@ -23,7 +23,9 @@ export {
   workspaceStore,
 } from "./store";
 export type {
+  DiagnosticStatus,
   QuestionAnswer,
+  QuestionStatus,
   SelectedImage,
   WorkspaceActionSource,
   WorkspaceStage,

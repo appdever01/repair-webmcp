@@ -1,7 +1,13 @@
+import { validateImage } from "../../api/_lib/image";
+import { createSessionToken } from "../../api/_lib/token";
 import { handler as analyzeHandler } from "../../api/object/analyze";
+import { handler as diagnosticHandler } from "../../api/object/diagnostic";
 import { handler as modelHandler } from "../../api/object/model";
 import { handler as planHandler } from "../../api/object/plan";
+import { handler as questionHandler } from "../../api/object/question";
 import { objectAnalysis, pngImage } from "./fixtures";
+
+const SESSION_SECRET = "a-production-length-secret-that-is-at-least-32-bytes";
 
 function request(path: string, init: RequestInit): Request {
   return new Request(`http://localhost${path}`, {
@@ -19,14 +25,14 @@ describe("generation API mock flow", () => {
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("VERCEL_ENV", "development");
     vi.stubEnv("GENERATION_MOCK_MODE", "true");
-    vi.stubEnv("SESSION_SIGNING_SECRET", "a-production-length-secret-that-is-at-least-32-bytes");
+    vi.stubEnv("SESSION_SIGNING_SECRET", SESSION_SECRET);
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  it("analyzes, starts, polls, and plans without persisting an image or job", async () => {
+  it("analyzes, interviews, visualizes, starts, polls, and plans without persisting an image or job", async () => {
     const analyzedResponse = await analyzeHandler(
       request("/api/object/analyze", {
         method: "POST",
@@ -35,6 +41,58 @@ describe("generation API mock flow", () => {
     );
     expect(analyzedResponse.status).toBe(200);
     const analyzed = await analyzedResponse.json();
+
+    const diagnosticResponse = await diagnosticHandler(
+      request("/api/object/diagnostic", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({ image: pngImage(), analysis: analyzed.analysis }),
+      }),
+    );
+    expect(await diagnosticResponse.json()).toMatchObject({
+      image: { mediaType: "image/png", base64: pngImage().base64 },
+    });
+
+    const questionResponse = await questionHandler(
+      request("/api/object/question", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({
+          image: pngImage(),
+          analysis: analyzed.analysis,
+          problemDescription: "Loose part",
+          answers: [],
+        }),
+      }),
+    );
+    const firstQuestion = await questionResponse.json();
+    expect(firstQuestion).toMatchObject({
+      status: "ask",
+      question: { id: "question.1", quickReplies: expect.any(Array) },
+    });
+    const answers = [
+      {
+        questionId: firstQuestion.question.id,
+        question: firstQuestion.question.prompt,
+        observation: { kind: "visual", description: "The loose part is visibly separated." },
+      },
+    ];
+    const completedInterviewResponse = await questionHandler(
+      request("/api/object/question", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({
+          image: pngImage(),
+          analysis: analyzed.analysis,
+          problemDescription: "Loose part",
+          answers,
+        }),
+      }),
+    );
+    expect(await completedInterviewResponse.json()).toMatchObject({
+      status: "ready",
+      question: null,
+    });
 
     const startedResponse = await modelHandler(
       request("/api/object/model", {
@@ -65,7 +123,7 @@ describe("generation API mock flow", () => {
         body: JSON.stringify({
           analysis: analyzed.analysis,
           problemDescription: "Loose part",
-          observations: [],
+          answers,
         }),
       }),
     );
@@ -80,21 +138,80 @@ describe("generation API mock flow", () => {
       }),
     );
     const analyzed = await analyzedResponse.json();
-    const response = await modelHandler(
+    const diagnosticResponse = await diagnosticHandler(
+      request("/api/object/diagnostic", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({ image: pngImage(), analysis: objectAnalysis() }),
+      }),
+    );
+    const modelResponse = await modelHandler(
       request("/api/object/model", {
         method: "POST",
         headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
         body: JSON.stringify({ image: pngImage(), analysis: objectAnalysis() }),
       }),
     );
+    const questionResponse = await questionHandler(
+      request("/api/object/question", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({
+          image: pngImage(),
+          analysis: objectAnalysis(),
+          problemDescription: "",
+          answers: [],
+        }),
+      }),
+    );
 
-    expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({
+    expect(diagnosticResponse.status).toBe(401);
+    expect(modelResponse.status).toBe(401);
+    expect(questionResponse.status).toBe(401);
+    expect(await diagnosticResponse.json()).toEqual({
       error: {
         code: "UNAUTHORIZED",
         message: "The supplied data does not match this session.",
         recoverable: false,
       },
+    });
+    expect(await modelResponse.json()).toEqual({
+      error: {
+        code: "UNAUTHORIZED",
+        message: "The supplied data does not match this session.",
+        recoverable: false,
+      },
+    });
+  });
+
+  it("ends questioning deterministically when the signed analysis requires qualified help", async () => {
+    const image = pngImage();
+    const analysis = objectAnalysis({
+      safety: {
+        riskLevel: "professional_help_only",
+        categories: ["mains_electricity"],
+        rationale: "Damaged mains wiring may be visible.",
+      },
+    });
+    const token = createSessionToken(validateImage(image).sha256, analysis, SESSION_SECRET, 1_800);
+
+    const response = await questionHandler(
+      request("/api/object/question", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          image,
+          analysis,
+          problemDescription: "Exposed wire",
+          answers: [],
+        }),
+      }),
+    );
+
+    expect(await response.json()).toEqual({
+      status: "ready",
+      question: null,
+      message: "The safety classification requires qualified help instead of more questions.",
     });
   });
 });

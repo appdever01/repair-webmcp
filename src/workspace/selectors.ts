@@ -4,10 +4,9 @@ export const selectDisplayedObjectName = (state: WorkspaceStoreState) =>
   state.objectNameCorrection.trim() || state.analysis?.objectName || "Uploaded object";
 
 export const selectUnansweredQuestions = (state: WorkspaceStoreState) =>
-  state.analysis?.clarifyingQuestions.flatMap((prompt, index) => {
-    const id = `question.${index + 1}`;
-    return state.answers.some((answer) => answer.questionId === id) ? [] : [{ id, prompt }];
-  }) ?? [];
+  state.questions.filter(
+    (question) => !state.answers.some((answer) => answer.questionId === question.id),
+  );
 
 export const selectActiveQuestion = (state: WorkspaceStoreState) => {
   const questions = selectUnansweredQuestions(state);

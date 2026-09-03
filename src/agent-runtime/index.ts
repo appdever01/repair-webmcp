@@ -34,6 +34,7 @@ export type {
   AgentVisibleTarget,
   GenerationStatus,
   HumanObservationRequestInput,
+  QuestionStatus,
   SafeActivitySummary,
   SafeSummaryValue,
   ToolManifestItem,

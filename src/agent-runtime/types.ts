@@ -16,6 +16,8 @@ export type GenerationStatus =
   | "failed"
   | "cancelled";
 
+export type QuestionStatus = "idle" | "loading" | "asking" | "complete" | "failed";
+
 export interface WorkspaceHotspot {
   id: string;
   label: string;
@@ -44,6 +46,7 @@ export interface WorkspaceSnapshot {
   modelExists: boolean;
   exploded: boolean;
   hotspots: readonly WorkspaceHotspot[];
+  questionStatus: QuestionStatus;
   unansweredHumanQuestions: readonly WorkspaceHumanQuestion[];
   planExists: boolean;
   stateVersion: number;

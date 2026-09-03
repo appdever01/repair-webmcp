@@ -31,6 +31,7 @@ export const initialWorkspaceSnapshot: WorkspaceSnapshot = {
   modelExists: false,
   exploded: false,
   hotspots: [],
+  questionStatus: "idle",
   unansweredHumanQuestions: [],
   planExists: false,
   stateVersion: 0,

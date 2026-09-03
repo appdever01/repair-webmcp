@@ -13,7 +13,6 @@ function objectAnalysis(): ObjectAnalysis {
     visibleCondition: ["The shade appears loose."],
     possibleIssues: [],
     hotspots: [],
-    clarifyingQuestions: ["Does the shade move when the lamp is unplugged?"],
     safety: {
       riskLevel: "caution",
       categories: ["ordinary"],
@@ -54,9 +53,7 @@ describe("upload-first manual experience", () => {
   it("explains the product and remains fully usable in manual mode", () => {
     render(<App />);
 
-    expect(
-      screen.getByRole("heading", { name: "One photo. A clearer fix." }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "One photo. A clearer fix." })).toBeInTheDocument();
     expect(screen.queryByText("Manual mode")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agent activity/ })).toHaveTextContent("0 actions");
     expect(screen.getByRole("button", { name: "Try a broken cup" })).toBeInTheDocument();
@@ -150,7 +147,7 @@ describe("upload-first manual experience", () => {
       "src",
       "blob:local-preview",
     );
-    expect(screen.getByRole("button", { name: "Analyze this object" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Start analysis" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Replace photo" })).toHaveClass(
       "replace-image-action",
     );
@@ -179,27 +176,42 @@ describe("upload-first manual experience", () => {
     expect(button.querySelector(".loading-spinner")).toBeInTheDocument();
   });
 
-  it("keeps repair questions ahead of optional 3D generation", async () => {
+  it("keeps guidance visible while making the 3D workspace available", async () => {
     const analysis = objectAnalysis();
+    const question = {
+      id: "question.1",
+      prompt: "Does the shade move when the lamp is unplugged?",
+      why: "Movement would help distinguish a loose connection from visible misalignment.",
+      suggestedKind: "visual" as const,
+      quickReplies: ["Yes, it moves", "No, it stays fixed", "I’m not sure"],
+      hotspotId: null,
+    };
     workspaceStore.setState({
       analysis,
       stage: "analysis",
       sessionToken: "s".repeat(48),
       compressedImage: { mediaType: "image/jpeg", base64: "YWJjZA==" },
       objectNameCorrection: analysis.objectName,
+      questions: [question],
+      questionStatus: "asking",
+      activeQuestionId: question.id,
     });
     render(<App />);
 
     expect(
       screen.getByRole("heading", {
-        name: analysis.clarifyingQuestions[0] ?? "Clarifying question",
+        name: question.prompt,
       }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "3D model" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Build optional 3D" })).not.toBeInTheDocument();
 
-    workspaceStore.setState({ plan: repairPlan(), stage: "guidance" });
+    act(() => workspaceStore.setState({ plan: repairPlan(), stage: "guidance" }));
 
-    expect(await screen.findByRole("button", { name: "Build optional 3D" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Your next safe action" }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "3D model" })).toHaveLength(1);
   });
 
   it("rejects unsupported files with an accessible message", async () => {

@@ -2,7 +2,9 @@ import {
   analyzeObject,
   draftRepairPlan,
   type GenerationClientError,
+  generateDiagnosticView,
   getModelGeneration,
+  getNextQuestion,
   startModelGeneration,
 } from "../../src/generation/client";
 import { objectAnalysis, pngImage, repairPlan } from "./fixtures";
@@ -59,6 +61,64 @@ describe("typed generation client contracts", () => {
     expect(JSON.parse(init?.body ?? "null")).not.toHaveProperty("sessionToken");
   });
 
+  it("requests an authenticated OpenAI diagnostic view", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ image: pngImage() }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      generateDiagnosticView(
+        { sessionToken: SESSION_TOKEN, image: pngImage(), analysis: objectAnalysis() },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ image: { mediaType: "image/png" } });
+    expect(fetchMock.mock.calls.at(0)?.[0]).toBe("/api/object/diagnostic");
+    const init = fetchMock.mock.calls.at(0)?.[1];
+    expect(init?.headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
+    expect(JSON.parse(init?.body ?? "null")).not.toHaveProperty("sessionToken");
+  });
+
+  it("requests the next image-specific question with prior answer context", async () => {
+    const response = {
+      status: "ask" as const,
+      question: {
+        id: "question.2",
+        prompt: "Is the visible gap changing?",
+        why: "That helps distinguish a loose connection from a fixed gap.",
+        suggestedKind: "visual" as const,
+        quickReplies: ["It changes", "It stays the same", "I’m not sure"],
+        hotspotId: "shade-fastener",
+      },
+      message: "One more observation would help.",
+    };
+    const fetchMock = vi.fn().mockResolvedValue(Response.json(response));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      getNextQuestion(
+        {
+          sessionToken: SESSION_TOKEN,
+          image: pngImage(),
+          analysis: objectAnalysis(),
+          problemDescription: "The shade moves.",
+          answers: [
+            {
+              questionId: "question.1",
+              question: "What is visible around the shade fastener?",
+              observation: { kind: "visual", description: "A gap is visible." },
+            },
+          ],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual(response);
+    expect(fetchMock.mock.calls.at(0)?.[0]).toBe("/api/object/question");
+    const init = fetchMock.mock.calls.at(0)?.[1];
+    expect(init?.headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
+    const body = JSON.parse(init?.body ?? "null");
+    expect(body).not.toHaveProperty("sessionToken");
+    expect(body.answers[0].question).toContain("shade fastener");
+  });
+
   it("encodes the opaque job ID for getModelGeneration", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
@@ -92,7 +152,13 @@ describe("typed generation client contracts", () => {
           sessionToken: SESSION_TOKEN,
           analysis: objectAnalysis(),
           problemDescription: "The shade moves.",
-          observations: [{ kind: "visual", description: "A gap is visible." }],
+          answers: [
+            {
+              questionId: "question.1",
+              question: "What is visible around the shade fastener?",
+              observation: { kind: "visual", description: "A gap is visible." },
+            },
+          ],
         },
         new AbortController().signal,
       ),

@@ -1,8 +1,10 @@
 import type {
+  AdaptiveQuestion,
   CompressedImage,
+  DiagnosticImage,
   GeneratedModel,
   GenerationError,
-  HumanObservation,
+  QuestionAnswer as GenerationQuestionAnswer,
   ObjectAnalysis,
   RepairPlan,
 } from "../generation/contracts";
@@ -22,7 +24,9 @@ export type WorkspaceStage =
   | "safety-stop"
   | "error";
 
-export type WorkspaceVisualMode = "photo" | "model";
+export type WorkspaceVisualMode = "photo" | "diagnostic" | "model";
+export type DiagnosticStatus = "idle" | "generating" | "succeeded" | "failed";
+export type QuestionStatus = "idle" | "loading" | "asking" | "complete" | "failed";
 export type WorkspaceActionSource = "human" | "webmcp" | "demo";
 
 export interface SelectedImage {
@@ -32,11 +36,7 @@ export interface SelectedImage {
   height: number | null;
 }
 
-export interface QuestionAnswer {
-  questionId: string;
-  question: string;
-  observation: HumanObservation;
-}
+export type QuestionAnswer = GenerationQuestionAnswer;
 
 export interface ReversibleWorkspaceActivity {
   activityId: string;
@@ -53,7 +53,11 @@ export interface WorkspaceState {
   analysis: ObjectAnalysis | null;
   objectNameCorrection: string;
   sessionToken: string | null;
+  diagnosticImage: DiagnosticImage | null;
+  diagnosticStatus: DiagnosticStatus;
+  diagnosticError: string | null;
   generationStatus: "idle" | "queued" | "processing" | "succeeded" | "failed" | "cancelled";
+  generationProgress: number | null;
   generationMessage: string | null;
   generationError: GenerationError | null;
   jobId: string | null;
@@ -63,6 +67,10 @@ export interface WorkspaceState {
   exploded: boolean;
   focusedHotspotId: string | null;
   activeQuestionId: string | null;
+  questions: readonly AdaptiveQuestion[];
+  questionStatus: QuestionStatus;
+  questionMessage: string | null;
+  questionError: string | null;
   answers: readonly QuestionAnswer[];
   plan: RepairPlan | null;
   operationError: string | null;

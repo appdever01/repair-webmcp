@@ -1,5 +1,12 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
 import { RepairIcon } from "../design/RepairIcon";
 import type { ObservationKind } from "../generation/contracts";
 import {
@@ -19,106 +26,75 @@ const observationKinds: Array<{ value: ObservationKind; label: string }> = [
   { value: "user_report", label: "Something I already know" },
 ];
 
-function OptionalModelAction() {
-  const state = useWorkspaceStore((current) => current);
-  const generating = state.generationStatus === "queued" || state.generationStatus === "processing";
-
-  if (state.model) {
-    return (
-      <section className="optional-model" aria-labelledby="optional-model-title">
-        <p className="eyebrow">Optional 3D view</p>
-        <h3 id="optional-model-title">Your interactive model is ready.</h3>
-        <p>
-          Use the 3D model tab above to rotate and inspect it. Photo labels remain on the photo.
-        </p>
-      </section>
-    );
-  }
-
-  return (
-    <section className="optional-model" aria-labelledby="optional-model-title">
-      <p className="eyebrow">Optional 3D view</p>
-      <h3 id="optional-model-title">
-        {generating ? "Building the interactive model." : "Explore the object in 3D."}
-      </h3>
-      <p>
-        This sends the prepared photo to the configured 3D provider. Your repair guidance remains
-        usable if generation fails.
-      </p>
-      {state.generationError && (
-        <p className="inline-error" role="alert">
-          {state.generationError.message}
-        </p>
-      )}
-      {generating ? (
-        <div className="optional-model-actions">
-          <span role="status">{state.generationMessage ?? "Building the 3D model."}</span>
-          <button
-            type="button"
-            className="text-button"
-            onClick={() =>
-              workspaceStore.getState().cancelCurrentTask(humanActionOptions(workspaceStore))
-            }
-          >
-            Cancel 3D generation
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="secondary-button"
-          disabled={state.isBusy}
-          onClick={() =>
-            void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
-          }
-        >
-          <RepairIcon name="cube" />
-          {state.generationStatus === "failed" || state.generationStatus === "cancelled"
-            ? "Retry optional 3D"
-            : "Build optional 3D"}
-        </button>
-      )}
-    </section>
-  );
-}
-
 function QuestionForm() {
   const question = useWorkspaceStore(useShallow(selectActiveQuestion));
+  const answers = useWorkspaceStore((state) => state.answers);
   const [kind, setKind] = useState<ObservationKind>("visual");
   const [description, setDescription] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const focusRequest = useWorkspaceStore((state) => state.activeQuestionId);
   useEffect(() => {
-    if (focusRequest) textareaRef.current?.focus();
-  }, [focusRequest]);
+    if (!question) return;
+    setKind(question.suggestedKind);
+    setDescription("");
+    textareaRef.current?.focus();
+  }, [question]);
   if (!question) return null;
+
+  const answer = (value: string, answerKind = kind) => {
+    if (!value.trim()) return;
+    workspaceStore
+      .getState()
+      .answerQuestion(question.id, { kind: answerKind, description: value.trim() });
+  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (!description.trim()) return;
-    workspaceStore
-      .getState()
-      .answerQuestion(question.id, { kind, description: description.trim() });
-    setDescription("");
+    answer(description);
   };
 
   return (
     <form className="question-form" onSubmit={submit} id={`human-${question.id}`}>
-      <p className="eyebrow">A question only you can answer</p>
+      <div className="interview-heading">
+        <p className="eyebrow">AI visual interview</p>
+        <span>
+          <RepairIcon name="agent" size={15} /> Question {answers.length + 1} · adapts to every
+          answer
+        </span>
+      </div>
       <h2>{question.prompt}</h2>
-      <label>
-        <span>Observation type</span>
-        <select
-          value={kind}
-          onChange={(event) => setKind(event.currentTarget.value as ObservationKind)}
-        >
-          {observationKinds.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="question-why">
+        <RepairIcon name="inspect" size={18} />
+        <p>
+          <strong>Why I’m asking</strong>
+          {question.why}
+        </p>
+      </div>
+      <fieldset className="quick-replies">
+        <legend className="sr-only">Quick answers</legend>
+        {question.quickReplies.map((reply) => (
+          <button key={reply} type="button" onClick={() => answer(reply, question.suggestedKind)}>
+            {reply}
+          </button>
+        ))}
+      </fieldset>
+      <div className="answer-divider">
+        <span>or describe it yourself</span>
+      </div>
+      <div className="question-field">
+        <span id="observation-type-label">Observation type</span>
+        <Select value={kind} onValueChange={(value) => setKind(value as ObservationKind)}>
+          <SelectTrigger aria-labelledby="observation-type-label">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {observationKinds.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <label>
         <span>What do you observe?</span>
         <textarea
@@ -131,24 +107,122 @@ function QuestionForm() {
         />
       </label>
       <button type="submit" className="primary-button" disabled={!description.trim()}>
-        <RepairIcon name="check" /> Record my observation
+        <RepairIcon name="forward" /> Send answer to AI
       </button>
       <button
         type="button"
         className="text-button"
         onClick={() =>
-          workspaceStore.getState().answerQuestion(question.id, {
-            kind: "user_report",
-            description: "The person could not determine this safely from the available object.",
-          })
+          answer(
+            "The person could not determine this safely from the available object.",
+            "user_report",
+          )
         }
       >
-        I can’t determine this safely
+        I can’t tell safely
       </button>
       <p className="authority-note">
-        A browser agent can open this question, but it cannot answer for you.
+        Quick replies are suggestions, not conclusions. Choose only what is true for your object.
       </p>
     </form>
+  );
+}
+
+function QuestionThinking() {
+  const answers = useWorkspaceStore((state) => state.answers);
+  const latest = answers.at(-1);
+  return (
+    <div className="question-thinking" role="status" aria-live="polite">
+      <div className="thinking-orbit" aria-hidden="true">
+        <RepairIcon name="agent" size={26} />
+        <span className="thinking-orbit-ring" />
+      </div>
+      <p className="eyebrow">AI visual interview</p>
+      <h2>{latest ? "Adapting to your answer…" : "Looking for the best first question…"}</h2>
+      {latest && (
+        <blockquote>
+          <small>You answered</small>
+          {latest.observation.description}
+        </blockquote>
+      )}
+      <p>Comparing your observation with the uploaded image and visible damage.</p>
+      <div className="indeterminate-progress" aria-hidden="true">
+        <span />
+      </div>
+    </div>
+  );
+}
+
+function QuestionFailure() {
+  const error = useWorkspaceStore((state) => state.questionError);
+  return (
+    <div className="question-failure">
+      <RepairIcon name="warning" size={28} />
+      <p className="eyebrow">Interview paused</p>
+      <h2>I couldn’t choose the next question.</h2>
+      <p className="inline-error" role="alert">
+        {error}
+      </p>
+      <button
+        type="button"
+        className="primary-button"
+        onClick={() =>
+          void workspaceStore.getState().loadNextQuestion(humanActionOptions(workspaceStore))
+        }
+      >
+        <RepairIcon name="reset" /> Try again
+      </button>
+      <button
+        type="button"
+        className="text-button"
+        onClick={() => workspaceStore.getState().finishQuestioning()}
+      >
+        Continue with what we have
+      </button>
+    </div>
+  );
+}
+
+function InterviewReady() {
+  const state = useWorkspaceStore((current) => current);
+  return (
+    <div className="interview-ready">
+      <span className="ready-check">
+        <RepairIcon name="check" size={25} />
+      </span>
+      <p className="eyebrow">Interview complete</p>
+      <h2>I have enough context.</h2>
+      <p>
+        {state.questionMessage ??
+          `${state.answers.length} observations are ready to combine with the image evidence.`}
+      </p>
+      <details className="interview-history">
+        <summary>{state.answers.length} human observations collected</summary>
+        <ol>
+          {state.answers.map((answer) => (
+            <li key={answer.questionId}>
+              <small>{answer.question}</small>
+              <span>{answer.observation.description}</span>
+            </li>
+          ))}
+        </ol>
+      </details>
+      {state.operationError && (
+        <p className="inline-error" role="alert">
+          {state.operationError}
+        </p>
+      )}
+      <button
+        type="button"
+        className="primary-button"
+        disabled={state.isBusy}
+        onClick={() =>
+          void workspaceStore.getState().draftRepairPlan(humanActionOptions(workspaceStore))
+        }
+      >
+        <RepairIcon name="repair" /> Build my guidance
+      </button>
+    </div>
   );
 }
 
@@ -248,7 +322,6 @@ function PlanView() {
           <p>No additional unknowns were listed.</p>
         )}
       </details>
-      <OptionalModelAction />
       <p className="authority-note">
         Only a person can perform, approve, or confirm physical work.
       </p>
@@ -258,9 +331,6 @@ function PlanView() {
 
 export function RepairGuidance() {
   const state = useWorkspaceStore((current) => current);
-  const unansweredCount = useWorkspaceStore(
-    (current) => (current.analysis?.clarifyingQuestions.length ?? 0) - current.answers.length,
-  );
   const safetyStop = useWorkspaceStore(selectIsSafetyStop);
   if (safetyStop)
     return (
@@ -274,10 +344,22 @@ export function RepairGuidance() {
         <PlanView />
       </aside>
     );
-  if (state.activeQuestionId)
+  if (state.questionStatus === "loading")
+    return (
+      <aside className="guidance-panel">
+        <QuestionThinking />
+      </aside>
+    );
+  if (state.activeQuestionId || state.questionStatus === "asking")
     return (
       <aside className="guidance-panel">
         <QuestionForm />
+      </aside>
+    );
+  if (state.questionStatus === "failed")
+    return (
+      <aside className="guidance-panel">
+        <QuestionFailure />
       </aside>
     );
   if (state.isBusy) {
@@ -290,33 +372,25 @@ export function RepairGuidance() {
       </aside>
     );
   }
-  if (unansweredCount > 0)
+  if (state.questionStatus === "complete")
     return (
       <aside className="guidance-panel">
-        <QuestionForm />
+        <InterviewReady />
       </aside>
     );
   return (
     <aside className="guidance-panel">
-      <p className="eyebrow">Next action</p>
-      <h2>Review a cautious plan.</h2>
-      <p>
-        Your observations will be combined with the visible evidence. The result remains a
-        hypothesis.
-      </p>
-      {state.operationError && (
-        <p className="inline-error" role="alert">
-          {state.operationError}
-        </p>
-      )}
+      <p className="eyebrow">AI visual interview</p>
+      <h2>Let’s ask a useful question.</h2>
+      <p>The next question will be chosen from the uploaded image and will adapt to each answer.</p>
       <button
         type="button"
         className="primary-button"
         onClick={() =>
-          void workspaceStore.getState().draftRepairPlan(humanActionOptions(workspaceStore))
+          void workspaceStore.getState().loadNextQuestion(humanActionOptions(workspaceStore))
         }
       >
-        <RepairIcon name="repair" /> Draft repair guidance
+        <RepairIcon name="agent" /> Start AI interview
       </button>
     </aside>
   );

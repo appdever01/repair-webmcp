@@ -223,7 +223,7 @@ export function IntakePanel() {
               ) : (
                 <RepairIcon name="inspect" />
               )}
-              <span>{state.isBusy ? "Analyzing" : "Analyze this object"}</span>
+              <span>{state.isBusy ? "Analyzing" : "Start analysis"}</span>
               {!state.isBusy && <RepairIcon name="forward" />}
             </button>
             {state.isBusy && (

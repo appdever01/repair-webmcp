@@ -30,6 +30,9 @@ export interface WorkspaceActions {
   setModelError(message: string): void;
   setActivityOpen(open: boolean): void;
   answerQuestion(questionId: string, observation: HumanObservation): void;
+  generateDiagnosticView(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
+  loadNextQuestion(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
+  finishQuestioning(): void;
   openImageUploader(options: WorkspaceActionOptions): WorkspaceActionResult;
   analyzeUploadedObject(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   start3DGeneration(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
@@ -60,7 +63,11 @@ const initialState: WorkspaceState = {
   analysis: null,
   objectNameCorrection: "",
   sessionToken: null,
+  diagnosticImage: null,
+  diagnosticStatus: "idle",
+  diagnosticError: null,
   generationStatus: "idle",
+  generationProgress: null,
   generationMessage: null,
   generationError: null,
   jobId: null,
@@ -70,6 +77,10 @@ const initialState: WorkspaceState = {
   exploded: false,
   focusedHotspotId: null,
   activeQuestionId: null,
+  questions: [],
+  questionStatus: "idle",
+  questionMessage: null,
+  questionError: null,
   answers: [],
   plan: null,
   operationError: null,
@@ -108,10 +119,6 @@ function publicError(error: unknown): string {
   return "Something went wrong. Your photo and workspace are still available.";
 }
 
-function questionId(index: number): string {
-  return `question.${index + 1}`;
-}
-
 function failure(message: string, recoverable = true): GenerationError {
   return { code: "MODEL_GENERATION_FAILED", message, recoverable };
 }
@@ -119,6 +126,10 @@ function failure(message: string, recoverable = true): GenerationError {
 export function createWorkspaceStore(services: WorkspaceServices = defaultWorkspaceServices) {
   let currentTaskController: AbortController | null = null;
   let currentTaskSequence = 0;
+  let diagnosticTaskController: AbortController | null = null;
+  let diagnosticTaskSequence = 0;
+  let questionTaskController: AbortController | null = null;
+  let questionTaskSequence = 0;
   let reversibleSequence = 0;
   let reversiblePatch: Partial<WorkspaceState> | null = null;
 
@@ -155,17 +166,55 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
     const isCurrentTask = (sequence: number) =>
       currentTaskSequence === sequence && currentTaskController !== null;
 
+    const beginDiagnosticTask = (externalSignal?: AbortSignal) => {
+      diagnosticTaskController?.abort();
+      const controller = new AbortController();
+      diagnosticTaskController = controller;
+      diagnosticTaskSequence += 1;
+      const sequence = diagnosticTaskSequence;
+      const abort = () => controller.abort(externalSignal?.reason);
+      if (externalSignal?.aborted) abort();
+      else externalSignal?.addEventListener("abort", abort, { once: true });
+      return {
+        controller,
+        sequence,
+        release: () => externalSignal?.removeEventListener("abort", abort),
+      };
+    };
+
+    const isCurrentDiagnosticTask = (sequence: number) =>
+      diagnosticTaskSequence === sequence && diagnosticTaskController !== null;
+
+    const beginQuestionTask = (externalSignal?: AbortSignal) => {
+      questionTaskController?.abort();
+      const controller = new AbortController();
+      questionTaskController = controller;
+      questionTaskSequence += 1;
+      const sequence = questionTaskSequence;
+      const abort = () => controller.abort(externalSignal?.reason);
+      if (externalSignal?.aborted) abort();
+      else externalSignal?.addEventListener("abort", abort, { once: true });
+      return {
+        controller,
+        sequence,
+        release: () => externalSignal?.removeEventListener("abort", abort),
+      };
+    };
+
+    const isCurrentQuestionTask = (sequence: number) =>
+      questionTaskSequence === sequence && questionTaskController !== null;
+
     const applyGeneration = (response: GetModelGenerationResponse) => {
       if (response.status === "succeeded") {
         currentTaskController = null;
         commit({
           stage: "workspace",
           generationStatus: "succeeded",
+          generationProgress: 100,
           generationMessage: response.message,
           generationError: null,
           model: response.model,
           operationError: null,
-          visualMode: "model",
           exploded: false,
           isBusy: false,
           originalFile: null,
@@ -178,24 +227,25 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         commit({
           stage: "workspace",
           generationStatus: response.status,
+          generationProgress: response.progress,
           generationMessage: response.message,
           generationError: response.error,
           model: null,
           operationError: response.error.message,
-          visualMode: "photo",
           exploded: false,
           isBusy: false,
           originalFile: null,
           announcement:
             response.status === "cancelled"
-              ? "3D generation was cancelled. The photo workspace remains available."
-              : "The 3D model could not be built. The photo workspace remains available.",
+              ? "3D generation was cancelled. You can retry or return to the photo."
+              : "The 3D model could not be built. You can retry or return to the photo.",
         });
         return true;
       }
       commit({
         stage: response.status === "queued" ? "generating" : "finishing",
         generationStatus: response.status,
+        generationProgress: response.progress,
         generationMessage: response.message,
         announcement:
           response.status === "queued" ? "Building the 3D model." : "Finishing the workspace.",
@@ -225,9 +275,9 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             commit({
               stage: "workspace",
               generationStatus: "cancelled",
+              generationProgress: null,
               generationError: failure("3D generation was cancelled."),
               generationMessage: "3D generation was cancelled.",
-              visualMode: "photo",
               isBusy: false,
               originalFile: null,
               announcement: "3D generation cancelled. The photo workspace remains available.",
@@ -238,10 +288,10 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           commit({
             stage: "workspace",
             generationStatus: "failed",
+            generationProgress: null,
             generationError: failure(publicError(error)),
             operationError: publicError(error),
             generationMessage: "The model status could not be refreshed.",
-            visualMode: "photo",
             isBusy: false,
             originalFile: null,
             announcement: "3D generation failed. Continue with the interactive photo.",
@@ -254,12 +304,12 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       commit({
         stage: "workspace",
         generationStatus: "failed",
+        generationProgress: null,
         generationError: failure(
           "3D generation took too long. You can retry from the photo workspace.",
         ),
         operationError: "3D generation took too long. You can retry from the photo workspace.",
         generationMessage: "3D generation timed out.",
-        visualMode: "photo",
         isBusy: false,
         originalFile: null,
         announcement: "3D generation timed out. Continue with the interactive photo.",
@@ -277,6 +327,10 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         const problemDescription = get().problemDescription;
         currentTaskController?.abort();
         currentTaskController = null;
+        diagnosticTaskController?.abort();
+        diagnosticTaskController = null;
+        questionTaskController?.abort();
+        questionTaskController = null;
         const previousUrl = get().image?.previewUrl;
         const previewUrl = createPreviewUrl(file);
         revokePreviewUrl(previousUrl);
@@ -295,6 +349,10 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       removeImage() {
         currentTaskController?.abort();
         currentTaskController = null;
+        diagnosticTaskController?.abort();
+        diagnosticTaskController = null;
+        questionTaskController?.abort();
+        questionTaskController = null;
         revokePreviewUrl(get().image?.previewUrl);
         reversiblePatch = null;
         commit({
@@ -314,10 +372,14 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         });
       },
       setVisualMode(mode) {
-        const nextMode = mode === "model" && !get().model ? "photo" : mode;
         commit({
-          visualMode: nextMode,
-          announcement: nextMode === "model" ? "3D model shown." : "Photo shown.",
+          visualMode: mode,
+          announcement:
+            mode === "model"
+              ? "3D workspace shown."
+              : mode === "diagnostic"
+                ? "Diagnostic damage map shown."
+                : "Original photo shown.",
         });
       },
       setModelError(message) {
@@ -334,19 +396,186 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       },
       answerQuestion(id, observation) {
         const state = get();
-        const index = state.analysis?.clarifyingQuestions.findIndex(
-          (_, questionIndex) => questionId(questionIndex) === id,
-        );
-        if (index === undefined || index < 0 || !state.analysis) return;
+        const question = state.questions.find((candidate) => candidate.id === id);
+        if (!question || state.answers.some((answer) => answer.questionId === id)) return;
         const answer: QuestionAnswer = {
           questionId: id,
-          question: state.analysis.clarifyingQuestions[index] ?? "Clarifying question",
+          question: question.prompt,
           observation,
         };
         commit({
-          answers: [...state.answers.filter((item) => item.questionId !== id), answer],
+          answers: [...state.answers, answer],
           activeQuestionId: null,
-          announcement: "Observation recorded from the person using the workspace.",
+          questionStatus: "idle",
+          questionMessage: null,
+          announcement: "Observation recorded. AI is deciding what to ask next.",
+        });
+        const next = get();
+        void next.loadNextQuestion({
+          expectedStateVersion: next.stateVersion,
+          source: "human",
+        });
+      },
+      async generateDiagnosticView(options) {
+        const state = get();
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        if (
+          state.diagnosticStatus === "generating" ||
+          !state.analysis ||
+          !state.sessionToken ||
+          !state.compressedImage
+        ) {
+          return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        }
+        const task = beginDiagnosticTask(options.signal);
+        commit({
+          diagnosticStatus: "generating",
+          diagnosticError: null,
+          visualMode: "diagnostic",
+          announcement: "OpenAI is creating a diagnostic damage map.",
+        });
+        try {
+          const response = await services.generateDiagnosticView(
+            {
+              sessionToken: state.sessionToken,
+              image: state.compressedImage,
+              analysis: state.analysis,
+            },
+            task.controller.signal,
+          );
+          if (!isCurrentDiagnosticTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          diagnosticTaskController = null;
+          commit({
+            diagnosticImage: response.image,
+            diagnosticStatus: "succeeded",
+            diagnosticError: null,
+            announcement: "The diagnostic damage map is ready. Verify it against the photo.",
+          });
+          return { ok: true };
+        } catch (error) {
+          if (!isCurrentDiagnosticTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          diagnosticTaskController = null;
+          const cancelled = isCancelled(error) || task.controller.signal.aborted;
+          commit({
+            diagnosticStatus: "failed",
+            diagnosticError: cancelled ? "Diagnostic view cancelled." : publicError(error),
+            announcement: cancelled
+              ? "Diagnostic view cancelled."
+              : "The diagnostic view could not be created. The original photo is still available.",
+          });
+          return cancelled
+            ? { ok: false, code: "CANCELLED" }
+            : { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        } finally {
+          task.release();
+        }
+      },
+      async loadNextQuestion(options) {
+        const state = get();
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        if (
+          !state.analysis ||
+          !state.sessionToken ||
+          !state.compressedImage ||
+          state.questionStatus === "loading" ||
+          state.questionStatus === "complete" ||
+          state.analysis.safety.riskLevel === "professional_help_only" ||
+          state.questions.some(
+            (question) => !state.answers.some((answer) => answer.questionId === question.id),
+          )
+        ) {
+          return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        }
+        const task = beginQuestionTask(options.signal);
+        commit({
+          questionStatus: "loading",
+          questionError: null,
+          activeQuestionId: null,
+          announcement:
+            state.answers.length === 0
+              ? "AI is choosing a question from the uploaded image."
+              : "AI is adapting the next question to your latest observation.",
+        });
+        try {
+          const response = await services.getNextQuestion(
+            {
+              sessionToken: state.sessionToken,
+              image: state.compressedImage,
+              analysis: state.analysis,
+              problemDescription: state.problemDescription,
+              answers: [...state.answers],
+            },
+            task.controller.signal,
+          );
+          if (!isCurrentQuestionTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          questionTaskController = null;
+          if (response.status === "ready") {
+            commit({
+              questionStatus: "complete",
+              questionMessage: response.message,
+              questionError: null,
+              activeQuestionId: null,
+              announcement: response.message,
+            });
+            return { ok: true };
+          }
+          const current = get();
+          commit({
+            questions: [...current.questions, response.question],
+            questionStatus: "asking",
+            questionMessage: response.message,
+            questionError: null,
+            activeQuestionId: response.question.id,
+            focusedHotspotId: response.question.hotspotId ?? current.focusedHotspotId,
+            announcement: `AI asks: ${response.question.prompt}`,
+          });
+          return { ok: true };
+        } catch (error) {
+          if (!isCurrentQuestionTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          questionTaskController = null;
+          const cancelled = isCancelled(error) || task.controller.signal.aborted;
+          commit({
+            questionStatus: "failed",
+            questionError: cancelled ? "Question generation was cancelled." : publicError(error),
+            questionMessage: null,
+            announcement: cancelled
+              ? "Question generation was cancelled."
+              : "The AI could not choose the next question. You can retry or continue.",
+          });
+          return cancelled
+            ? { ok: false, code: "CANCELLED" }
+            : { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        } finally {
+          task.release();
+        }
+      },
+      finishQuestioning() {
+        const state = get();
+        if (
+          !state.analysis ||
+          state.questions.some(
+            (question) => !state.answers.some((answer) => answer.questionId === question.id),
+          )
+        ) {
+          return;
+        }
+        questionTaskController?.abort();
+        questionTaskController = null;
+        questionTaskSequence += 1;
+        commit({
+          questionStatus: "complete",
+          questionError: null,
+          questionMessage: "Continuing with the evidence collected so far.",
+          activeQuestionId: null,
+          announcement: "The AI interview is complete. Repair guidance can now be prepared.",
         });
       },
       openImageUploader(options) {
@@ -423,6 +652,10 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             objectNameCorrection: response.analysis.objectName,
             focusedHotspotId: response.analysis.hotspots[0]?.id ?? null,
             activeQuestionId: null,
+            questions: [],
+            questionStatus: safetyStop ? "complete" : "idle",
+            questionMessage: safetyStop ? "The safety stop ends the AI interview." : null,
+            questionError: null,
             answers: [],
             isBusy: false,
             originalFile: safetyStop ? null : get().originalFile,
@@ -430,6 +663,13 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
               ? "A safety stop is active. Qualified help is recommended."
               : `${response.analysis.objectName} identified. Review the findings as hypotheses.`,
           });
+          if (!safetyStop) {
+            const next = get();
+            void next.loadNextQuestion({
+              expectedStateVersion: next.stateVersion,
+              source: options.source,
+            });
+          }
           return { ok: true };
         } catch (error) {
           if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
@@ -462,13 +702,14 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         commit({
           stage: "preparing",
           generationStatus: "queued",
+          generationProgress: 5,
           generationMessage: "Preparing a clean reference.",
           generationError: null,
           operationError: null,
           isBusy: true,
           model: null,
           modelError: null,
-          visualMode: "photo",
+          visualMode: "model",
           exploded: false,
           announcement: "Preparing a clean reference for the 3D provider.",
           reversibleActivity: null,
@@ -486,6 +727,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           commit({
             stage: "generating",
             generationStatus: response.status,
+            generationProgress: 12,
             generationMessage: response.message,
             jobId: response.jobId,
             announcement: "Building the 3D model.",
@@ -500,6 +742,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           commit({
             stage: "workspace",
             generationStatus: cancelled ? "cancelled" : "failed",
+            generationProgress: null,
             generationError: cancelled
               ? failure("3D generation was cancelled.")
               : failure(publicError(error)),
@@ -509,7 +752,6 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
               : "The 3D model could not be started.",
             isBusy: false,
             originalFile: null,
-            visualMode: "photo",
             exploded: false,
             announcement: cancelled
               ? "3D generation cancelled. The photo workspace remains available."
@@ -587,9 +829,9 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       requestHumanObservation(id, options) {
         const state = get();
         if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
-        const exists = state.analysis?.clarifyingQuestions.some(
-          (_, index) =>
-            questionId(index) === id && !state.answers.some((answer) => answer.questionId === id),
+        const exists = state.questions.some(
+          (question) =>
+            question.id === id && !state.answers.some((answer) => answer.questionId === id),
         );
         if (!exists) return { ok: false, code: "INVALID_INPUT" };
         commit({
@@ -608,7 +850,14 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         if (state.isBusy || !state.analysis || !state.sessionToken || state.plan) {
           return { ok: false, code: "ACTION_NOT_AVAILABLE" };
         }
-        if (state.answers.length < state.analysis.clarifyingQuestions.length) {
+        if (state.questionStatus !== "complete") {
+          return { ok: false, code: "HUMAN_ACTION_REQUIRED" };
+        }
+        if (
+          state.questions.some(
+            (question) => !state.answers.some((answer) => answer.questionId === question.id),
+          )
+        ) {
           return { ok: false, code: "HUMAN_ACTION_REQUIRED" };
         }
         if (state.analysis.safety.riskLevel === "professional_help_only") {
@@ -627,7 +876,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
               sessionToken: state.sessionToken,
               analysis: state.analysis,
               problemDescription: state.problemDescription,
-              observations: state.answers.map((answer) => answer.observation),
+              answers: [...state.answers],
             },
             task.controller.signal,
           );
@@ -672,6 +921,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         commit({
           stage: state.analysis ? "workspace" : state.image ? "image-ready" : "intake",
           generationStatus: wasGeneration ? "cancelled" : state.generationStatus,
+          generationProgress: wasGeneration ? null : state.generationProgress,
           generationMessage: wasGeneration
             ? "3D generation was cancelled."
             : state.generationMessage,
@@ -681,7 +931,6 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           operationError: null,
           isBusy: false,
           originalFile: state.analysis ? null : state.originalFile,
-          visualMode: "photo",
           exploded: wasGeneration ? false : state.exploded,
           announcement: "The current task was cancelled. The workspace remains available.",
         });
@@ -710,6 +959,12 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         currentTaskController?.abort();
         currentTaskController = null;
         currentTaskSequence += 1;
+        diagnosticTaskController?.abort();
+        diagnosticTaskController = null;
+        diagnosticTaskSequence += 1;
+        questionTaskController?.abort();
+        questionTaskController = null;
+        questionTaskSequence += 1;
         revokePreviewUrl(get().image?.previewUrl);
         reversiblePatch = null;
         set({
@@ -721,6 +976,10 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       dispose() {
         currentTaskController?.abort();
         currentTaskController = null;
+        diagnosticTaskController?.abort();
+        diagnosticTaskController = null;
+        questionTaskController?.abort();
+        questionTaskController = null;
         revokePreviewUrl(get().image?.previewUrl);
       },
     };

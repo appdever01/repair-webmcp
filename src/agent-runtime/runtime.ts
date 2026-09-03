@@ -149,6 +149,7 @@ export function selectAvailableAgentTools(snapshot: WorkspaceSnapshot): AgentToo
   if (snapshot.unansweredHumanQuestions.length > 0) names.push("request_human_observation");
   if (
     snapshot.analysisExists &&
+    snapshot.questionStatus === "complete" &&
     snapshot.unansweredHumanQuestions.length === 0 &&
     !snapshot.planExists &&
     !activeTask
@@ -171,6 +172,7 @@ function publicWorkspaceResult(snapshot: WorkspaceSnapshot, source: AgentActivit
     modelExists: snapshot.modelExists,
     exploded: snapshot.exploded,
     hotspotCount: snapshot.hotspots.length,
+    questionStatus: snapshot.questionStatus,
     hotspots: snapshot.hotspots.slice(0, 3).flatMap((hotspot) => {
       const hotspotId = safePublicId(hotspot.id);
       return hotspotId ? [{ id: hotspotId, label: sanitizeActivityText(hotspot.label, 72) }] : [];

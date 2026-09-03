@@ -1,5 +1,6 @@
 import type {
   GetModelGenerationResponse,
+  NextQuestionResponse,
   ObjectAnalysis,
   RepairPlan,
 } from "../../src/generation/contracts";
@@ -34,7 +35,6 @@ function analysis(overrides: Partial<ObjectAnalysis> = {}): ObjectAnalysis {
         radius: 0.08,
       },
     ],
-    clarifyingQuestions: ["Does the guard move while the fan is unplugged?"],
     safety: { riskLevel: "caution", categories: ["ordinary"], rationale: "Keep it unplugged." },
     stopConditions: ["Stop if damaged wiring is visible."],
     providerSafeDescription: "One desk fan with its existing proportions and visible wear.",
@@ -74,10 +74,12 @@ function services(
     analyzed?: ObjectAnalysis;
     analyzeError?: Error;
     polls?: GetModelGenerationResponse[];
+    questions?: NextQuestionResponse[];
     wait?: WorkspaceServices["wait"];
   } = {},
 ): WorkspaceServices {
   const polls = [...(values.polls ?? [])];
+  const questions = [...(values.questions ?? [])];
   return {
     prepareImage: vi.fn(async () => ({
       blob: new Blob(["compressed"], { type: "image/jpeg" }),
@@ -89,6 +91,29 @@ function services(
       if (values.analyzeError) throw values.analyzeError;
       return { sessionToken, analysis: values.analyzed ?? analysis() };
     }),
+    generateDiagnosticView: vi.fn(async () => ({ image })),
+    getNextQuestion: vi.fn(
+      async ({ answers }) =>
+        questions.shift() ??
+        (answers.length === 0
+          ? {
+              status: "ask" as const,
+              question: {
+                id: "question.1",
+                prompt: "Does the guard move while the fan is unplugged?",
+                why: "Movement helps distinguish a loose fastener from visible misalignment.",
+                suggestedKind: "visual" as const,
+                quickReplies: ["Yes, it moves", "No, it stays fixed", "I’m not sure"],
+                hotspotId: "guard-fastener",
+              },
+              message: "One safe observation would help.",
+            }
+          : {
+              status: "ready" as const,
+              question: null,
+              message: "I have enough observations to prepare guidance.",
+            }),
+    ),
     startModelGeneration: vi.fn(async () => ({
       jobId,
       status: "queued" as const,
@@ -167,7 +192,32 @@ describe("dynamic workspace action layer", () => {
     expect(store.getState().announcement).toBe("Analysis is unavailable.");
   });
 
-  it("polls with bounded workspace states and keeps the 2D fallback after model failure", async () => {
+  it("generates a signed diagnostic view without blocking the rest of the workspace", async () => {
+    const mocked = services();
+    const store = createWorkspaceStore(mocked);
+    store.getState().selectImage(photo());
+    await store.getState().analyzeUploadedObject(humanActionOptions(store));
+
+    await expect(
+      store.getState().generateDiagnosticView(humanActionOptions(store)),
+    ).resolves.toEqual({ ok: true });
+
+    expect(mocked.generateDiagnosticView).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionToken,
+        analysis: expect.objectContaining({ objectName: "Desk fan" }),
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(store.getState()).toMatchObject({
+      diagnosticStatus: "succeeded",
+      diagnosticImage: image,
+      visualMode: "diagnostic",
+      isBusy: false,
+    });
+  });
+
+  it("preserves Meshy progress and offers an in-place retry after model failure", async () => {
     const mocked = services({
       polls: [
         {
@@ -193,14 +243,18 @@ describe("dynamic workspace action layer", () => {
       ],
     });
     const store = createWorkspaceStore(mocked);
+    const progressValues: Array<number | null> = [];
+    const unsubscribe = store.subscribe((state) => progressValues.push(state.generationProgress));
     store.getState().selectImage(photo());
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
     await store.getState().start3DGeneration(humanActionOptions(store));
     await vi.waitFor(() => expect(store.getState().generationStatus).toBe("failed"));
+    unsubscribe();
 
     expect(mocked.getModelGeneration).toHaveBeenCalledTimes(2);
+    expect(progressValues).toContain(40);
     expect(store.getState()).toMatchObject({
-      visualMode: "photo",
+      visualMode: "model",
       image: expect.any(Object),
       originalFile: null,
     });
@@ -246,6 +300,12 @@ describe("dynamic workspace action layer", () => {
     const store = createWorkspaceStore(mocked);
     store.getState().selectImage(photo());
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
+    await vi.waitFor(() => expect(store.getState().questionStatus).toBe("asking"));
+    expect(mocked.getNextQuestion).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ answers: [], problemDescription: "" }),
+      expect.any(AbortSignal),
+    );
     expect(store.getState().focusHotspot("guard-fastener", humanActionOptions(store))).toEqual({
       ok: true,
     });
@@ -257,13 +317,32 @@ describe("dynamic workspace action layer", () => {
     store
       .getState()
       .answerQuestion("question.1", { kind: "visual", description: "The guard moves slightly." });
+    await vi.waitFor(() => expect(store.getState().questionStatus).toBe("complete"));
+    expect(mocked.getNextQuestion).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        answers: [
+          expect.objectContaining({
+            question: "Does the guard move while the fan is unplugged?",
+            observation: { kind: "visual", description: "The guard moves slightly." },
+          }),
+        ],
+      }),
+      expect.any(AbortSignal),
+    );
     await expect(store.getState().draftRepairPlan(humanActionOptions(store))).resolves.toEqual({
       ok: true,
     });
 
     expect(mocked.draftRepairPlan).toHaveBeenCalledWith(
       expect.objectContaining({
-        observations: [{ kind: "visual", description: "The guard moves slightly." }],
+        answers: [
+          {
+            questionId: "question.1",
+            question: "Does the guard move while the fan is unplugged?",
+            observation: { kind: "visual", description: "The guard moves slightly." },
+          },
+        ],
       }),
       expect.any(AbortSignal),
     );

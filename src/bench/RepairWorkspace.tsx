@@ -4,21 +4,9 @@ import { AnalysisPanel } from "./AnalysisPanel";
 import { RepairGuidance } from "./RepairGuidance";
 import { VisualWorkspace } from "./VisualWorkspace";
 
-const progressLabels = {
-  uploading: "Uploading",
-  understanding: "Understanding the object",
-  preparing: "Preparing a clean reference",
-  generating: "Building the 3D model",
-  finishing: "Finishing the workspace",
-  planning: "Preparing cautious guidance",
-} as const;
-
 export function RepairWorkspace() {
   const state = useWorkspaceStore((current) => current);
-  const progress =
-    state.stage in progressLabels
-      ? progressLabels[state.stage as keyof typeof progressLabels]
-      : null;
+  const areaCount = state.analysis?.hotspots.length ?? 0;
 
   return (
     <div className="workspace-page">
@@ -26,6 +14,16 @@ export function RepairWorkspace() {
         <div>
           <p className="eyebrow">Object workspace</p>
           <h1>{state.objectNameCorrection || state.analysis?.objectName}</h1>
+          <div className="workspace-context">
+            <span>
+              <RepairIcon name="inspect" size={15} /> {areaCount} marked{" "}
+              {areaCount === 1 ? "area" : "areas"}
+            </span>
+            <span data-risk={state.analysis?.safety.riskLevel}>
+              <RepairIcon name="shield" size={15} />
+              {state.analysis?.safety.riskLevel.replaceAll("_", " ")}
+            </span>
+          </div>
         </div>
         <div className="workspace-actions">
           <label className="replace-file-button">
@@ -55,15 +53,6 @@ export function RepairWorkspace() {
           )}
         </div>
       </div>
-      {progress && (
-        <div className="progress-state" role="status">
-          <span className="progress-pulse" aria-hidden="true" />
-          <div>
-            <strong>{progress}</strong>
-            <small>{state.generationMessage ?? "This can take a moment."}</small>
-          </div>
-        </div>
-      )}
       <div className="workspace-layout">
         <div className="dominant-workspace">
           <VisualWorkspace />

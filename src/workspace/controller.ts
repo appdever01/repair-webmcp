@@ -8,11 +8,9 @@ import type { WorkspaceStore } from "./store";
 
 function snapshot(store: WorkspaceStore): WorkspaceSnapshot {
   const state = store.getState();
-  const unansweredHumanQuestions =
-    state.analysis?.clarifyingQuestions.flatMap((prompt, index) => {
-      const id = `question.${index + 1}`;
-      return state.answers.some((answer) => answer.questionId === id) ? [] : [{ id, prompt }];
-    }) ?? [];
+  const unansweredHumanQuestions = state.questions
+    .filter((question) => !state.answers.some((answer) => answer.questionId === question.id))
+    .map(({ id, prompt }) => ({ id, prompt }));
   const safetyStop =
     state.analysis?.safety.riskLevel === "professional_help_only"
       ? {
@@ -28,6 +26,7 @@ function snapshot(store: WorkspaceStore): WorkspaceSnapshot {
     modelExists: state.model !== null && state.modelError === null,
     exploded: state.exploded,
     hotspots: state.analysis?.hotspots.map(({ id, label }) => ({ id, label })) ?? [],
+    questionStatus: state.questionStatus,
     unansweredHumanQuestions,
     planExists: state.plan !== null,
     stateVersion: state.stateVersion,

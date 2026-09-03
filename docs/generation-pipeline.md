@@ -1,8 +1,9 @@
 # Dynamic object generation pipeline
 
-RE:PAIR uses a stateless, provider-backed pipeline. OpenAI analyzes the uploaded photo and can
-optionally edit it into a clean reference image. Meshy creates the 3D asset. OpenAI does not return
-a polygon mesh or GLB from visual analysis.
+RE:PAIR uses a stateless, provider-backed pipeline. OpenAI analyzes the uploaded photo, runs an
+adaptive visual interview, creates a diagnostic wireframe comparison, and can edit the photo into a
+clean Meshy reference image. Meshy creates the 3D asset. OpenAI does not return a polygon mesh or GLB
+from visual analysis.
 
 The implementation follows the current official contracts for the [OpenAI Responses
 API](https://developers.openai.com/api/reference/cli/resources/responses/methods/create), [OpenAI
@@ -20,21 +21,30 @@ image editing](https://developers.openai.com/api/docs/guides/image-generation), 
    as untrusted evidence rather than instructions.
 4. The API returns the analysis and a short-lived HMAC-signed session token. The token binds the
    session to hashes of the original image and analysis.
-5. Repair questions and `POST /api/object/plan` form the core path and do not require Meshy.
-   High-risk classifications take a deterministic professional-help path without actionable repair
-   instructions. The optional 3D action is offered after the guidance is available.
-6. `POST /api/object/model` verifies the session binding. When `normalizeImage` is true, OpenAI Image edits
+5. `POST /api/object/diagnostic` verifies the same session binding and uses GPT Image editing to
+   preserve the original view while rendering a wireframe damage map with numbered spotlight areas.
+6. `POST /api/object/question` verifies the signed image and analysis, then sends the current image,
+   problem description, and complete question-and-answer history to OpenAI Responses. It returns one
+   safe, high-information question with quick replies or an explicit `ready` decision. Each human
+   answer starts the next turn, repeated questions are rejected, and the server stops after at most
+   six answers.
+7. `POST /api/object/plan` receives the full question-and-answer history so short replies retain
+   their meaning. High-risk classifications take a deterministic professional-help path without
+   actionable repair instructions. The interview and repair plan form the core path and do not
+   require Meshy; the 3D tab remains available independently.
+8. `POST /api/object/model` verifies the session binding. When `normalizeImage` is true, OpenAI Image edits
    the original into a neutral-background reference while preserving identity, damage, markings,
    and geometry. The reference is held only in memory and sent to Meshy as a data URI.
-7. Meshy returns a task ID. The API wraps it in a session-bound signed opaque job ID; it does not
+9. Meshy returns a task ID. The API wraps it in a session-bound signed opaque job ID; it does not
    create an application job record.
-8. `GET /api/object/model?jobId=...` verifies both tokens and polls Meshy. Meshy states map as
+10. `GET /api/object/model?jobId=...` verifies both tokens and polls Meshy. Meshy states map as
    `PENDING` to `queued`, `IN_PROGRESS` to `processing`, `SUCCEEDED` to `succeeded`, `FAILED` to
    `failed`, and `CANCELED` to `cancelled`. Progress is `null` when Meshy omits it.
-The browser client exports `analyzeObject`, `startModelGeneration`, `getModelGeneration`, and
-`draftRepairPlan` from `src/generation/client.ts`. Authenticated calls send the session token in the
-`Authorization: Bearer` header. All request, response, analysis, hotspot, observation, status,
-model, plan, and error types are exported by `src/generation/contracts.ts`.
+The browser client exports `analyzeObject`, `generateDiagnosticView`, `getNextQuestion`,
+`startModelGeneration`, `getModelGeneration`, and `draftRepairPlan` from
+`src/generation/client.ts`. Authenticated calls send
+the session token in the `Authorization: Bearer` header. All request, response, analysis, hotspot,
+observation, status, model, plan, and error types are exported by `src/generation/contracts.ts`.
 
 ## Environment
 
@@ -45,7 +55,7 @@ Vercel environment variables rather than source control.
 | --- | --- | --- |
 | `OPENAI_API_KEY` | Production | Server-side OpenAI credential. |
 | `OPENAI_ANALYSIS_MODEL` | Production | An account-accessible Responses model supporting image input and Structured Outputs. No model ID is assumed by the code. |
-| `OPENAI_IMAGE_MODEL` | Optional | An account-accessible GPT Image edit model, required for WebP or explicitly requested normalization. |
+| `OPENAI_IMAGE_MODEL` | Damage map | An account-accessible GPT Image edit model, such as `gpt-image-2`; also used for WebP or explicitly requested normalization. |
 | `IMAGE_TO_3D_PROVIDER` | Optional | Defaults to `meshy`. |
 | `MESHY_API_KEY` | Optional | Required only when the user requests a Meshy 3D model. |
 | `SESSION_SIGNING_SECRET` | Production | Random secret of at least 32 bytes used for session and job HMAC signatures. |
@@ -54,8 +64,9 @@ Vercel environment variables rather than source control.
 | `IMAGE_TO_3D_TIMEOUT_MS` | Optional | Per Meshy request timeout. Default: 20,000 ms. |
 | `GENERATION_MOCK_MODE` | Local only | Replaces OpenAI and Meshy with deterministic local responses outside production. |
 
-Production ignores the mock flag. Analysis and repair planning require signing plus OpenAI
-configuration. Only the optional model routes require Meshy configuration.
+Production ignores the mock flag. Analysis, adaptive questioning, damage-map generation, and repair
+planning require signing plus OpenAI configuration. Only the model routes require Meshy
+configuration.
 
 ## Image constraints and normalization
 
@@ -111,8 +122,9 @@ confidence plus evidence for and against.
 ## Privacy and security
 
 Uploaded images are not written to disk, object storage, a database, logs, or the signed tokens.
-They exist in request memory only. OpenAI processes images used for analysis and optional
-normalization; Meshy processes the reference image and hosts generated model assets. Their
+They exist in request memory only. OpenAI processes images used for analysis, adaptive questioning,
+damage-map generation, and optional normalization; Meshy processes the reference image and hosts
+generated model assets. Their
 respective retention and privacy terms apply. OpenAI Responses is called with `store: false`, but
 customers should review [OpenAI data
 controls](https://developers.openai.com/api/docs/guides/your-data) and Meshy's terms for their own
@@ -139,8 +151,9 @@ GENERATION_MOCK_MODE=true
 ```
 
 Mock mode still validates origins, JSON contracts, image bytes, session bindings, expiry, and job
-bindings. It returns a generic analysis, cautious mock plan, and a minimal in-data GLB. It does not
-assess visual quality or safety and cannot validate real OpenAI or Meshy credentials. The flag has
+bindings. It returns a generic analysis, one deterministic adaptive question followed by `ready`, a
+cautious mock plan, and a minimal in-data GLB. It does not assess visual quality or safety and cannot
+validate real OpenAI or Meshy credentials. The flag has
 no effect in production.
 
 Tests mock every external request. Run the focused suite with:
