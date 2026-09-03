@@ -1,12 +1,11 @@
-import { Component, lazy, type ReactNode, Suspense, useState } from "react";
+import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { RepairIcon } from "../design/RepairIcon";
 import { supportsWebGL } from "../scene/quality";
 import type { SceneCommand } from "../scene/RepairScene";
 import { humanActionOptions, useWorkspaceStore, workspaceStore } from "../workspace";
 
-const RepairScene = lazy(() =>
-  import("../scene/RepairScene").then((module) => ({ default: module.RepairScene })),
-);
+const loadScene = () => import("../scene/RepairScene");
+const RepairScene = lazy(() => loadScene().then((module) => ({ default: module.RepairScene })));
 
 class ModelBoundary extends Component<
   { children: ReactNode; modelKey: string; onFailure: () => void },
@@ -60,6 +59,9 @@ function HotspotLayer() {
 export function VisualWorkspace() {
   const state = useWorkspaceStore((current) => current);
   const [webgl] = useState(supportsWebGL);
+  useEffect(() => {
+    if (webgl) void loadScene().catch(() => undefined);
+  }, [webgl]);
   const [command, setCommand] = useState<SceneCommand>({ id: 0, type: "reset" });
   const [explodedModelUrl, setExplodedModelUrl] = useState<string | null>(null);
   const modelAvailable = Boolean(state.model && webgl && !state.modelError);
