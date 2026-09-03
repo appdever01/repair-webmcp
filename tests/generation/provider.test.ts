@@ -135,7 +135,7 @@ describe("Meshy image-to-3D provider", () => {
 describe("Meshy failure mapping", () => {
   const provider = new MeshyProvider("meshy-key", 1_000);
   const input = { imageDataUrl: "data:image/png;base64,QUJD", objectDescription: "cup" };
-  const failure = async (status: number) =>
+  const failure = async () =>
     provider.start(input, new AbortController().signal).catch((error: unknown) => error);
 
   it("reports rejected requests, missing credits, and bad credentials distinctly", async () => {
@@ -145,14 +145,14 @@ describe("Meshy failure mapping", () => {
       .mockResolvedValueOnce(new Response("{}", { status: 402 }))
       .mockResolvedValueOnce(new Response("{}", { status: 500 }));
 
-    expect(await failure(400)).toMatchObject({ code: "MODEL_GENERATION_FAILED", status: 502 });
-    expect(await failure(401)).toMatchObject({ code: "CONFIGURATION_ERROR", status: 500 });
-    expect(await failure(402)).toMatchObject({
+    expect(await failure()).toMatchObject({ code: "MODEL_GENERATION_FAILED", status: 502 });
+    expect(await failure()).toMatchObject({ code: "CONFIGURATION_ERROR", status: 500 });
+    expect(await failure()).toMatchObject({
       code: "UPSTREAM_UNAVAILABLE",
       message: expect.stringContaining("credits"),
       recoverable: false,
     });
-    expect(await failure(500)).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", recoverable: true });
+    expect(await failure()).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", recoverable: true });
   });
 
   it("does not send image enhancement, which Meshy scopes to standard models", async () => {
