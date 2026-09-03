@@ -14,6 +14,8 @@ The 3D canvas is never the only path. A model-generation, loading, expiry, WebGL
 
 Clarifying answers are entered only through explicit human controls. Repair guidance treats every cause as a hypothesis and presents evidence for, evidence against, unknowns, limitations, and stop conditions before one clear next action. High-risk categories take a deterministic professional-help-only path with no actionable repair instructions.
 
+The landing page explains the contract before anyone uploads: a four-step overview, the live tool manifest next to the actions only a person can take, and a short guide for trying RE:PAIR with a WebMCP-capable Chrome and Google's Model Context Tool Inspector.
+
 RE:PAIR also makes WebMCP observable. An always-discoverable activity dock reports the number of available actions and shows each tool’s source, title, lifecycle, timestamp, elapsed time, redacted summaries, and resulting visible change. Real calls are labeled `Browser agent`; local scripted invocations are labeled `Guided demo`. Image base64, credentials, session tokens, signed provider URLs, and chain-of-thought are never displayed.
 
 The browser agent may read state, open the uploader, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
@@ -24,7 +26,7 @@ The browser agent may read state, open the uploader, start or cancel a task, foc
 - Stateless same-origin serverless APIs for OpenAI analysis, optional image normalization, signed provider-job polling, and repair-plan drafting.
 - Short-lived HMAC tokens bind the selected image and immutable analysis without storing either.
 - Client-side image compression, abort propagation, bounded polling backoff, session-only provenance, and object-URL cleanup.
-- Observable stage-aware WebMCP registration with strict schemas, optimistic state-version checks, cancellation, redaction, and visible effects for every mutation.
+- Observable stage-aware WebMCP registration with strict schemas, optimistic state-version checks, cancellation, redaction, and visible effects for every mutation, verified against real Chromium with the WebMCP testing feature in CI.
 - Private IconJar package exposed only through the shared `RepairIcon` component.
 
 ## Human and agent contract
