@@ -6,6 +6,8 @@ function snapshot(values: Partial<WorkspaceSnapshot>): WorkspaceSnapshot {
     imageSelected: false,
     analysisExists: false,
     generationStatus: "idle",
+    modelExists: false,
+    exploded: false,
     hotspots: [],
     unansweredHumanQuestions: [],
     planExists: false,
@@ -33,5 +35,17 @@ describe("workspace-aware agent availability", () => {
     expect(tools).toEqual(["get_workspace_state", "cancel_current_task"]);
     expect(tools).not.toContain("draft_repair_plan");
     expect(tools).not.toContain("start_3d_generation");
+    expect(tools).not.toContain("explode_model");
+  });
+
+  it("offers explode only after a 3D model is visible", () => {
+    expect(selectAvailableAgentTools(snapshot({ analysisExists: true }))).not.toContain(
+      "explode_model",
+    );
+    expect(
+      selectAvailableAgentTools(
+        snapshot({ analysisExists: true, modelExists: true, generationStatus: "succeeded" }),
+      ),
+    ).toContain("explode_model");
   });
 });

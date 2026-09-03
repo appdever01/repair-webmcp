@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../../src/app/App";
 import type { ObjectAnalysis, RepairPlan } from "../../src/generation/contracts";
@@ -54,11 +54,13 @@ describe("upload-first manual experience", () => {
   it("explains the product and remains fully usable in manual mode", () => {
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "One photo. A clearer fix." })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "One photo. A clearer fix." }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Manual mode")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agent activity/ })).toHaveTextContent("0 actions");
-    expect(screen.getByRole("button", { name: "broken cup" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "desk lamp" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try a broken cup" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try a desk lamp" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Four short steps. You stay in charge." }),
     ).toBeInTheDocument();
@@ -66,15 +68,21 @@ describe("upload-first manual experience", () => {
       screen.getByRole("heading", { name: "The same workspace, exposed as WebMCP tools." }),
     ).toBeInTheDocument();
     expect(screen.getByText("get_workspace_state")).toBeInTheDocument();
+    expect(screen.getByText("explode_model")).toBeInTheDocument();
     expect(screen.getByText("draft_repair_plan")).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "A live agent session in a few minutes." }),
+      screen.getByRole("heading", { name: "Use ChatGPT, Claude, or Codex." }),
     ).toBeInTheDocument();
+    const supportedAgents = within(screen.getByRole("list", { name: "Supported agents" }));
+    expect(supportedAgents.getByText("ChatGPT")).toBeInTheDocument();
+    expect(supportedAgents.getByText("Claude")).toBeInTheDocument();
+    expect(supportedAgents.getByText("Codex")).toBeInTheDocument();
+    expect(supportedAgents.getByText("Any MCP")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Source on GitHub" })).toHaveAttribute(
       "href",
       "https://github.com/appdever01/repair-webmcp",
     );
-    expect(screen.getByText(/Your photo stays on this device until you start/)).toBeInTheDocument();
+    expect(screen.getByText("Sent to OpenAI only when you start.")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "The things you actually use." }),
     ).toBeInTheDocument();
@@ -87,7 +95,24 @@ describe("upload-first manual experience", () => {
     expect(
       screen.getByAltText("A bicycle with its slipped chain and rear gear highlighted."),
     ).toHaveAttribute("src", "/repair-bike.png");
-    expect(screen.getByText("Powered by OpenAI")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
+      "href",
+      "#how-it-works",
+    );
+    expect(screen.getByRole("link", { name: "Agents" })).toHaveAttribute("href", "#agents");
+    expect(screen.getByRole("link", { name: "Try it" })).toHaveAttribute("href", "#agent-guide");
+    expect(
+      screen.getByAltText(
+        "ChatGPT, Claude, and Codex connected to a RE:PAIR workspace showing a broken mug with lime hotspot markers.",
+      ),
+    ).toHaveAttribute("src", "/agent-guide-session.webp");
+    expect(screen.queryByText("Powered by OpenAI")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Star on GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/appdever01/repair-webmcp",
+    );
+    expect(screen.getByRole("button", { name: "Reset workspace" })).toBeInTheDocument();
     expect(
       screen.queryByText("Understand the object. Choose a safer next step."),
     ).not.toBeInTheDocument();
@@ -125,7 +150,7 @@ describe("upload-first manual experience", () => {
       "src",
       "blob:local-preview",
     );
-    expect(screen.getByRole("button", { name: "Understand this object" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Analyze this object" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Replace photo" })).toHaveClass(
       "replace-image-action",
     );
@@ -149,7 +174,7 @@ describe("upload-first manual experience", () => {
 
     act(() => workspaceStore.setState({ isBusy: true, stage: "uploading" }));
 
-    const button = screen.getByRole("button", { name: "Understanding your photo" });
+    const button = screen.getByRole("button", { name: "Analyzing" });
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button.querySelector(".loading-spinner")).toBeInTheDocument();
   });

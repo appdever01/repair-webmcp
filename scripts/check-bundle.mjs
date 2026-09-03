@@ -35,7 +35,7 @@ const publicAssets = files.filter(
 );
 let assetBytes = 0;
 for (const file of publicAssets) assetBytes += (await stat(join(assetsDirectory, file))).size;
-for (const file of ["fallback-lamp.webp", "repair-og.jpg", "social-card.png"]) {
+for (const file of ["fallback-lamp.webp", "project-media.png", "social-card.png"]) {
   assetBytes += (await stat(join("dist", file))).size;
 }
 

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./public/repair-og.jpg" alt="RE:PAIR object repair workspace" width="1200" />
+  <img src="./public/project-media.png" alt="RE:PAIR turns a photo of a broken cup into repair guidance and a 3D view" width="1200" />
   <h1>RE:PAIR</h1>
   <p><strong>Show what needs fixing. Understand the evidence. Choose a safer next step.</strong></p>
   <p><a href="https://repair-webmcp.vercel.app"><strong>Open RE:PAIR</strong></a> · <a href="./docs/demo-script.md">Demo script</a> · <a href="./docs/generation-pipeline.md">Generation pipeline</a></p>

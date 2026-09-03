@@ -60,6 +60,7 @@ export interface WorkspaceState {
   model: GeneratedModel | null;
   modelError: string | null;
   visualMode: WorkspaceVisualMode;
+  exploded: boolean;
   focusedHotspotId: string | null;
   activeQuestionId: string | null;
   answers: readonly QuestionAnswer[];

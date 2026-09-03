@@ -13,6 +13,7 @@ describe("observable agent runtime contracts", () => {
       "analyze_uploaded_object",
       "cancel_current_task",
       "draft_repair_plan",
+      "explode_model",
       "focus_hotspot",
       "get_generation_status",
       "get_workspace_state",

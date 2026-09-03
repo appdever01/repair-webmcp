@@ -41,6 +41,8 @@ export interface WorkspaceSnapshot {
   imageSelected: boolean;
   analysisExists: boolean;
   generationStatus: GenerationStatus;
+  modelExists: boolean;
+  exploded: boolean;
   hotspots: readonly WorkspaceHotspot[];
   unansweredHumanQuestions: readonly WorkspaceHumanQuestion[];
   planExists: boolean;
@@ -81,6 +83,7 @@ export interface WorkspaceController {
   start3DGeneration(context: WorkspaceActionContext): WorkspaceAction;
   refreshGenerationStatus(context: WorkspaceActionContext): WorkspaceAction;
   focusHotspot(hotspotId: string, context: WorkspaceActionContext): WorkspaceAction;
+  setExplodedView(exploded: boolean, context: WorkspaceActionContext): WorkspaceAction;
   requestHumanObservation(
     input: HumanObservationRequestInput,
     context: WorkspaceActionContext,
@@ -100,6 +103,7 @@ export interface AgentVisibleTarget {
     | "generation"
     | "hotspot"
     | "human-question"
+    | "model"
     | "repair-plan"
     | "task"
     | "uploader";

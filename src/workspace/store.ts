@@ -35,6 +35,7 @@ export interface WorkspaceActions {
   start3DGeneration(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   refreshGenerationStatus(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   focusHotspot(hotspotId: string, options: WorkspaceActionOptions): WorkspaceActionResult;
+  setExplodedView(exploded: boolean, options: WorkspaceActionOptions): WorkspaceActionResult;
   requestHumanObservation(
     questionId: string,
     options: WorkspaceActionOptions,
@@ -66,6 +67,7 @@ const initialState: WorkspaceState = {
   model: null,
   modelError: null,
   visualMode: "photo",
+  exploded: false,
   focusedHotspotId: null,
   activeQuestionId: null,
   answers: [],
@@ -164,6 +166,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           model: response.model,
           operationError: null,
           visualMode: "model",
+          exploded: false,
           isBusy: false,
           originalFile: null,
           announcement: "The interactive 3D model is ready.",
@@ -180,6 +183,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           model: null,
           operationError: response.error.message,
           visualMode: "photo",
+          exploded: false,
           isBusy: false,
           originalFile: null,
           announcement:
@@ -320,6 +324,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         commit({
           modelError: message,
           visualMode: "photo",
+          exploded: false,
           announcement:
             "The 3D model could not be displayed. The interactive photo is still available.",
         });
@@ -464,6 +469,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           model: null,
           modelError: null,
           visualMode: "photo",
+          exploded: false,
           announcement: "Preparing a clean reference for the 3D provider.",
           reversibleActivity: null,
         });
@@ -504,6 +510,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             isBusy: false,
             originalFile: null,
             visualMode: "photo",
+            exploded: false,
             announcement: cancelled
               ? "3D generation cancelled. The photo workspace remains available."
               : "3D generation failed. Continue with the interactive photo.",
@@ -553,6 +560,27 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             focusedHotspotId: state.focusedHotspotId,
             announcement: state.announcement,
           }),
+        });
+        return { ok: true };
+      },
+      setExplodedView(exploded, options) {
+        const state = get();
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        if (!state.model || state.modelError) return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        commit({
+          exploded,
+          visualMode: "model",
+          announcement: exploded
+            ? "3D model parts are separated."
+            : "3D model parts are reassembled.",
+          reversibleActivity: reversible(
+            exploded ? "Exploded the 3D model" : "Assembled the 3D model",
+            {
+              exploded: state.exploded,
+              visualMode: state.visualMode,
+              announcement: state.announcement,
+            },
+          ),
         });
         return { ok: true };
       },
@@ -654,6 +682,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           isBusy: false,
           originalFile: state.analysis ? null : state.originalFile,
           visualMode: "photo",
+          exploded: wasGeneration ? false : state.exploded,
           announcement: "The current task was cancelled. The workspace remains available.",
         });
         return { ok: true };

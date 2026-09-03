@@ -131,6 +131,48 @@ describe("observable agent tool invocation", () => {
     await runtime.dispose();
   });
 
+  it("explodes a visible 3D model through the controller", async () => {
+    const controller = new MockWorkspaceController({
+      ...initialWorkspaceSnapshot,
+      imageSelected: true,
+      analysisExists: true,
+      modelExists: true,
+      generationStatus: "succeeded",
+    });
+    const runtime = createAgentRuntime(controller, undefined);
+
+    const result = await runtime.invokeForDemo("explode_model", {
+      exploded: true,
+      expectedStateVersion: 0,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      affectedTarget: { kind: "model", id: "exploded-view", title: "Exploded model" },
+    });
+    expect(controller.calls[0]).toMatchObject({ name: "setExplodedView", value: "exploded" });
+    expect(controller.getSnapshot().exploded).toBe(true);
+    expect(runtime.activityStore.getSnapshot().events.at(-1)).toMatchObject({
+      toolName: "explode_model",
+      affectedTarget: { kind: "model", id: "exploded-view" },
+    });
+    await runtime.dispose();
+  });
+
+  it("rejects explode before a 3D model exists", async () => {
+    const controller = new MockWorkspaceController();
+    const runtime = createAgentRuntime(controller, undefined);
+
+    const result = await runtime.invokeForDemo("explode_model", {
+      exploded: true,
+      expectedStateVersion: 0,
+    });
+
+    expect(result).toMatchObject({ ok: false, code: "ACTION_NOT_AVAILABLE" });
+    expect(controller.calls).toHaveLength(0);
+    await runtime.dispose();
+  });
+
   it("rejects an unlisted hotspot before the controller can focus it", async () => {
     const controller = new MockWorkspaceController({
       ...initialWorkspaceSnapshot,

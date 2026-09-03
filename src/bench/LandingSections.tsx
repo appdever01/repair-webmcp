@@ -29,51 +29,26 @@ const humanOnly = [
   "Mark physical work complete",
 ];
 
+const agents = ["ChatGPT", "Claude", "Codex", "Any MCP"] as const;
+
 const guide = [
   {
-    title: "Use Chrome 150 or newer",
-    body: (
-      <>
-        Open <code>chrome://flags/#enable-webmcp-testing</code>, set it to Enabled, and relaunch.
-        The API is also rolling out through a Chrome origin trial.
-      </>
-    ),
+    title: "Open RE:PAIR from your agent",
+    body: "ChatGPT, Claude, Codex, or any AI that supports MCP. It sees the tools on this page.",
   },
   {
-    title: "Add an agent that speaks WebMCP",
-    body: (
-      <>
-        Google's{" "}
-        <a href="https://github.com/GoogleChromeLabs/webmcp-tools" rel="noreferrer">
-          Model Context Tool Inspector
-        </a>{" "}
-        lists the registered tools, lets you call them by hand, or hands them to Gemini.
-      </>
-    ),
+    title: "Watch the dock",
+    body: "When it connects, the activity dock shows the tools that fit this step.",
   },
   {
-    title: "Open RE:PAIR and watch the dock",
-    body: (
-      <>
-        The activity dock reports <em>Browser agent connected</em> and the number of tools that fit
-        the current step. That set changes as you move through the repair.
-      </>
-    ),
-  },
-  {
-    title: "Ask for something useful",
-    body: (
-      <>
-        Try <em>"Read the workspace state, then open the image uploader."</em> Choose the photo
-        yourself, then ask the agent to focus the first hotspot or draft the guidance.
-      </>
-    ),
+    title: "Ask it to help",
+    body: 'Try "Read the workspace state, then open the image uploader." You still choose the photo.',
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="landing-section" aria-labelledby="how-title">
+    <section className="landing-section" id="how-it-works" aria-labelledby="how-title">
       <div className="landing-heading">
         <p className="eyebrow">How it works</p>
         <h2 id="how-title">Four short steps. You stay in charge.</h2>
@@ -145,9 +120,10 @@ export function AgentSection() {
         <h2 id="agents-title">The same workspace, exposed as WebMCP tools.</h2>
         <p>
           RE:PAIR registers tools on <code>document.modelContext</code>, so an agent running in your
-          browser can read the workspace, focus a hotspot, open a question, or draft guidance. Only
-          the tools that fit the current step are registered, every write carries a state version,
-          and each call appears in the activity dock with its source, timing, and effect.
+          browser can read the workspace, explode the 3D model, focus a hotspot, open a question, or
+          draft guidance. Only the tools that fit the current step are registered, every write
+          carries a state version, and each call appears in the activity dock with its source,
+          timing, and effect.
         </p>
       </div>
       <div className="agent-columns">
@@ -188,25 +164,53 @@ export function AgentSection() {
 export function AgentGuide() {
   return (
     <section className="landing-section" id="agent-guide" aria-labelledby="guide-title">
-      <div className="landing-heading">
-        <p className="eyebrow">Try it with an agent</p>
-        <h2 id="guide-title">A live agent session in a few minutes.</h2>
-      </div>
-      <ol className="guide-list">
-        {guide.map((item, index) => (
-          <li key={item.title}>
-            <span>{index + 1}</span>
-            <div>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
+      <div className="guide-panel">
+        <div className="guide-split">
+          <div>
+            <div className="landing-heading">
+              <p className="eyebrow">Bring your own agent</p>
+              <h2 id="guide-title">Use ChatGPT, Claude, or Codex.</h2>
+              <p>
+                If your AI speaks MCP, it can drive this workspace. You still choose the photo and
+                make the physical calls.
+              </p>
             </div>
-          </li>
-        ))}
-      </ol>
-      <p className="guide-note">
-        <RepairIcon name="info" /> No WebMCP in your browser? Open the activity dock and choose
-        Preview guided activity. It runs the same tool path locally and labels it Guided demo.
-      </p>
+            <ul className="guide-agents" aria-label="Supported agents">
+              {agents.map((name) => (
+                <li key={name}>
+                  <RepairIcon name="agent" size={14} />
+                  {name}
+                </li>
+              ))}
+            </ul>
+            <ol className="guide-list">
+              {guide.map((item, index) => (
+                <li key={item.title}>
+                  <span>{index + 1}</span>
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="guide-note">
+              <RepairIcon name="info" /> No agent nearby? Open the activity dock and choose Preview
+              guided activity. Same path, labeled Guided demo.
+            </p>
+          </div>
+          <figure className="guide-visual">
+            <img
+              src="/agent-guide-session.webp"
+              alt="ChatGPT, Claude, and Codex connected to a RE:PAIR workspace showing a broken mug with lime hotspot markers."
+              width="1200"
+              height="800"
+              loading="lazy"
+              decoding="async"
+            />
+          </figure>
+        </div>
+      </div>
     </section>
   );
 }
@@ -219,10 +223,6 @@ export function SiteFooter() {
         <a href="https://github.com/appdever01/repair-webmcp" rel="noreferrer">
           Source on GitHub
         </a>
-      </p>
-      <p>
-        Analysis by OpenAI. Optional 3D by Meshy. Guidance is informational, and a person decides
-        every physical step.
       </p>
     </footer>
   );

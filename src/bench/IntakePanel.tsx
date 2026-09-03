@@ -94,145 +94,166 @@ export function IntakePanel() {
     <div className="intake-page">
       <section className="intake-hero" aria-labelledby="intake-title">
         <div className="intake-copy">
-          <p className="eyebrow">Start with a photo</p>
-          <h1 id="intake-title">One photo. A clearer fix.</h1>
-          <p className="hero-copy">
-            Drop in a photo. We’ll spot what’s wrong and guide you to the safest next step.
+          <p className="hero-kicker">
+            <span aria-hidden="true" /> Visual repair intelligence
           </p>
+          <h1 id="intake-title">
+            One photo. <span>A clearer fix.</span>
+          </h1>
+          <p className="hero-copy">
+            Turn one photo into a clear, careful next step. Understand what failed, what to check,
+            and when it is safer to stop.
+          </p>
+          <ul className="hero-proof" aria-label="RE:PAIR benefits">
+            <li>Evidence-led</li>
+            <li>Safety-aware</li>
+            <li>You stay in control</li>
+          </ul>
         </div>
-        <div className="upload-card">
-          <input
-            ref={inputRef}
-            id="object-photo"
-            className="sr-only file-input"
-            type="file"
-            hidden
-            aria-label="Choose a photo"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={onFileChange}
-          />
-          <button
-            type="button"
-            ref={uploaderRef}
-            id="image-uploader"
-            className="upload-surface"
-            data-dragging={dragging}
-            data-prompted={state.uploaderPromptVisible}
-            onClick={() => inputRef.current?.click()}
-            onDragEnter={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragOver={(event) => event.preventDefault()}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-          >
-            {state.image ? (
-              <div className="selected-preview">
-                <img src={state.image.previewUrl} alt="Selected object preview" />
+        <div className="upload-stage">
+          <div className="upload-card">
+            <div className="upload-card-heading">
+              <div>
+                <span className="upload-card-index">01</span>
+                <h2>Start a new repair</h2>
               </div>
-            ) : (
-              <div className="upload-empty">
-                <span className="upload-icon">
-                  <RepairIcon name="upload" size={28} />
-                </span>
-                <strong>Drop or paste a photo</strong>
-                <span>or click to browse</span>
-                <small>JPEG, PNG, or WebP · up to 24 MB before compression</small>
-              </div>
-            )}
-          </button>
-          {state.uploaderPromptVisible && (
-            <p className="agent-prompt-note">
-              <RepairIcon name="agent" /> A browser agent opened this area. Drop, paste, or choose
-              the image yourself.
-            </p>
-          )}
-          {selectionError && (
-            <p className="field-error" role="alert">
-              {selectionError}
-            </p>
-          )}
-          {state.operationError && (
-            <p className="field-error" role="alert">
-              {state.operationError}
-            </p>
-          )}
-          {state.image && (
-            <div className="image-actions">
-              <button
-                type="button"
-                className="replace-image-action"
-                onClick={() => inputRef.current?.click()}
-              >
-                <RepairIcon name="camera" /> Replace photo
-              </button>
-              <button
-                type="button"
-                className="remove-image-action"
-                onClick={() => workspaceStore.getState().removeImage()}
-              >
-                <RepairIcon name="delete" /> Remove
-              </button>
+              <p>
+                <RepairIcon name="shield" size={14} /> Private until you start
+              </p>
             </div>
-          )}
-          <label className="description-field" htmlFor="problem-description">
-            <span>
-              What seems wrong? <small>Optional</small>
-            </span>
-            <textarea
-              id="problem-description"
-              rows={3}
-              maxLength={2_000}
-              value={state.problemDescription}
-              placeholder="For example: the handle wobbles and makes a clicking sound"
-              onChange={(event) =>
-                workspaceStore.getState().setProblemDescription(event.currentTarget.value)
-              }
+            <input
+              ref={inputRef}
+              id="object-photo"
+              className="sr-only file-input"
+              type="file"
+              hidden
+              aria-label="Choose a photo"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={onFileChange}
             />
-          </label>
-          <button
-            type="button"
-            className="primary-button"
-            disabled={!state.image || state.isBusy}
-            aria-busy={state.isBusy}
-            onClick={() => void startAnalysis()}
-          >
-            {state.isBusy ? (
-              <span className="loading-spinner" aria-hidden="true" />
-            ) : (
-              <RepairIcon name="inspect" />
-            )}
-            {state.isBusy ? "Understanding your photo" : "Understand this object"}
-          </button>
-          {state.isBusy && (
             <button
               type="button"
-              className="secondary-button"
-              onClick={() =>
-                workspaceStore.getState().cancelCurrentTask(humanActionOptions(workspaceStore))
-              }
+              ref={uploaderRef}
+              id="image-uploader"
+              className="upload-surface"
+              data-dragging={dragging}
+              data-prompted={state.uploaderPromptVisible}
+              onClick={() => inputRef.current?.click()}
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
             >
-              <RepairIcon name="stop" /> Cancel
+              {state.image ? (
+                <div className="selected-preview">
+                  <img src={state.image.previewUrl} alt="Selected object preview" />
+                </div>
+              ) : (
+                <div className="upload-empty">
+                  <span className="upload-icon">
+                    <RepairIcon name="upload" size={28} />
+                  </span>
+                  <strong>Drop or paste your photo</strong>
+                  <span>or click anywhere to browse</span>
+                  <small>JPEG, PNG or WebP · up to 24 MB</small>
+                </div>
+              )}
             </button>
-          )}
-          <p className="upload-disclosure">
-            <RepairIcon name="shield" size={14} />
-            <span>
-              Your photo stays on this device until you start. It is then sent to OpenAI for
-              analysis, and to the 3D provider only if you build a model. Nothing is kept in browser
-              storage.
-            </span>
-          </p>
-          <div className="sample-action">
-            <span>Don’t have a photo ready? Try a sample:</span>
-            <span className="sample-action-group">
-              {sampleObjects.map((sample) => (
-                <button key={sample.path} type="button" onClick={() => void selectSample(sample)}>
-                  {sample.label}
+            {state.uploaderPromptVisible && (
+              <p className="agent-prompt-note">
+                <RepairIcon name="agent" /> A browser agent opened this area. Drop, paste, or choose
+                the image yourself.
+              </p>
+            )}
+            {selectionError && (
+              <p className="field-error" role="alert">
+                {selectionError}
+              </p>
+            )}
+            {state.operationError && (
+              <p className="field-error" role="alert">
+                {state.operationError}
+              </p>
+            )}
+            {state.image && (
+              <div className="image-actions">
+                <button
+                  type="button"
+                  className="replace-image-action"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <RepairIcon name="camera" /> Replace photo
                 </button>
-              ))}
-            </span>
+                <button
+                  type="button"
+                  className="remove-image-action"
+                  onClick={() => workspaceStore.getState().removeImage()}
+                >
+                  <RepairIcon name="delete" /> Remove
+                </button>
+              </div>
+            )}
+            <label className="description-field" htmlFor="problem-description">
+              <span>
+                What are you noticing? <small>Optional</small>
+              </span>
+              <textarea
+                id="problem-description"
+                rows={2}
+                maxLength={2_000}
+                value={state.problemDescription}
+                placeholder="e.g. The hinge is loose and clicks when opened"
+                onChange={(event) =>
+                  workspaceStore.getState().setProblemDescription(event.currentTarget.value)
+                }
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button hero-analyze-button"
+              disabled={!state.image || state.isBusy}
+              aria-busy={state.isBusy}
+              onClick={() => void startAnalysis()}
+            >
+              {state.isBusy ? (
+                <span className="loading-spinner" aria-hidden="true" />
+              ) : (
+                <RepairIcon name="inspect" />
+              )}
+              <span>{state.isBusy ? "Analyzing" : "Analyze this object"}</span>
+              {!state.isBusy && <RepairIcon name="forward" />}
+            </button>
+            {state.isBusy && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() =>
+                  workspaceStore.getState().cancelCurrentTask(humanActionOptions(workspaceStore))
+                }
+              >
+                <RepairIcon name="stop" /> Cancel
+              </button>
+            )}
+            <div className="upload-card-footer">
+              <p className="upload-disclosure">Sent to OpenAI only when you start.</p>
+              <div className="sample-action">
+                <span>No photo?</span>
+                <span className="sample-action-group">
+                  {sampleObjects.map((sample) => (
+                    <button
+                      key={sample.path}
+                      type="button"
+                      onClick={() => void selectSample(sample)}
+                    >
+                      Try a {sample.label}
+                    </button>
+                  ))}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

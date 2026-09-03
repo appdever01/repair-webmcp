@@ -64,10 +64,9 @@ export function VisualWorkspace() {
     if (webgl) void loadScene().catch(() => undefined);
   }, [webgl]);
   const [command, setCommand] = useState<SceneCommand>({ id: 0, type: "reset" });
-  const [explodedModelUrl, setExplodedModelUrl] = useState<string | null>(null);
   const modelAvailable = Boolean(state.model && webgl && !state.modelError);
   const showModel = state.visualMode === "model" && modelAvailable;
-  const exploded = state.model?.glbUrl === explodedModelUrl;
+  const exploded = state.exploded;
   const nextCommand = (type: SceneCommand["type"]) =>
     setCommand((current) => ({ id: current.id + 1, type }));
 
@@ -151,9 +150,9 @@ export function VisualWorkspace() {
               aria-label={exploded ? "Assemble model parts" : "Explode model parts"}
               aria-pressed={exploded}
               onClick={() =>
-                setExplodedModelUrl((current) =>
-                  current === state.model?.glbUrl ? null : (state.model?.glbUrl ?? null),
-                )
+                workspaceStore
+                  .getState()
+                  .setExplodedView(!exploded, humanActionOptions(workspaceStore))
               }
             >
               <RepairIcon name={exploded ? "reuse" : "isolate"} />

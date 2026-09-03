@@ -25,6 +25,8 @@ function snapshot(store: WorkspaceStore): WorkspaceSnapshot {
     imageSelected: state.image !== null,
     analysisExists: state.analysis !== null,
     generationStatus: state.generationStatus,
+    modelExists: state.model !== null && state.modelError === null,
+    exploded: state.exploded,
     hotspots: state.analysis?.hotspots.map(({ id, label }) => ({ id, label })) ?? [],
     unansweredHumanQuestions,
     planExists: state.plan !== null,
@@ -54,6 +56,8 @@ export function createWorkspaceController(store: WorkspaceStore): WorkspaceContr
       store.getState().refreshGenerationStatus(options(context)),
     focusHotspot: (hotspotId, context) =>
       store.getState().focusHotspot(hotspotId, options(context)),
+    setExplodedView: (exploded, context) =>
+      store.getState().setExplodedView(exploded, options(context)),
     requestHumanObservation: (input: HumanObservationRequestInput, context) =>
       store.getState().requestHumanObservation(input.questionId, options(context)),
     draftRepairPlan: (context) => store.getState().draftRepairPlan(options(context)),

@@ -55,6 +55,7 @@ const successMessages: Record<AgentToolName, string> = {
   start_3d_generation: "Started the 3D generation task.",
   get_generation_status: "Refreshed the visible generation status.",
   focus_hotspot: "Focused the selected repair hotspot.",
+  explode_model: "Updated the visible exploded view of the 3D model.",
   request_human_observation: "Presented the observation request. No answer was recorded.",
   draft_repair_plan: "Drafted a plan for review. No physical step was marked complete.",
   cancel_current_task: "Requested cancellation of the current task.",
@@ -66,6 +67,7 @@ interface ParsedToolInput extends Record<string, unknown> {
   hotspotId?: string;
   questionId?: string;
   activityId?: string;
+  exploded?: boolean;
 }
 
 interface InvocationOptions {
@@ -143,6 +145,7 @@ export function selectAvailableAgentTools(snapshot: WorkspaceSnapshot): AgentToo
     names.push("cancel_current_task");
   }
   if (snapshot.hotspots.length > 0) names.push("focus_hotspot");
+  if (snapshot.modelExists) names.push("explode_model");
   if (snapshot.unansweredHumanQuestions.length > 0) names.push("request_human_observation");
   if (
     snapshot.analysisExists &&
@@ -165,6 +168,8 @@ function publicWorkspaceResult(snapshot: WorkspaceSnapshot, source: AgentActivit
     imageSelected: snapshot.imageSelected,
     analysisExists: snapshot.analysisExists,
     generationStatus: snapshot.generationStatus,
+    modelExists: snapshot.modelExists,
+    exploded: snapshot.exploded,
     hotspotCount: snapshot.hotspots.length,
     hotspots: snapshot.hotspots.slice(0, 3).flatMap((hotspot) => {
       const hotspotId = safePublicId(hotspot.id);
@@ -259,6 +264,12 @@ function targetFor(
           return hotspot ? { id: hotspot.id, title: hotspot.label } : null;
         })(),
       );
+    case "explode_model":
+      return {
+        kind: "model",
+        id: "exploded-view",
+        title: input.exploded ? "Exploded model" : "Assembled model",
+      };
     case "request_human_observation":
       return safeTarget(
         "human-question",
@@ -350,6 +361,8 @@ async function runControllerAction(
       return controller.refreshGenerationStatus(context);
     case "focus_hotspot":
       return controller.focusHotspot(input.hotspotId ?? "", context);
+    case "explode_model":
+      return controller.setExplodedView(input.exploded === true, context);
     case "request_human_observation":
       return controller.requestHumanObservation({ questionId: input.questionId ?? "" }, context);
     case "draft_repair_plan":

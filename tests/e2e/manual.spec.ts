@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 
 test("manual upload shows a local preview and stays removable", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Understand this object" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Analyze this object" })).toBeDisabled();
   await page.getByLabel("Choose a photo").setInputFiles({
     name: "object.png",
     mimeType: "image/png",
@@ -14,10 +14,10 @@ test("manual upload shows a local preview and stays removable", async ({ page })
     ),
   });
   await expect(page.getByAltText("Selected object preview")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Understand this object" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Analyze this object" })).toBeEnabled();
   await page.getByRole("button", { name: "Remove" }).click();
   await expect(page.getByAltText("Selected object preview")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Understand this object" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Analyze this object" })).toBeDisabled();
 });
 
 test("upload-first intake has no automatically detectable accessibility violations", async ({

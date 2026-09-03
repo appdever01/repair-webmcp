@@ -73,10 +73,17 @@ export function summarizeAgentToolInput(input: unknown): SafeActivitySummary {
       ? record.expectedStateVersion
       : "[invalid number]";
   }
+  if (typeof record.exploded === "boolean") summary.exploded = record.exploded;
   for (const key of ["hotspotId", "questionId", "activityId"] as const) {
     if (key in record) summary[key] = "[provided]";
   }
-  const expectedKeys = new Set(["expectedStateVersion", "hotspotId", "questionId", "activityId"]);
+  const expectedKeys = new Set([
+    "expectedStateVersion",
+    "hotspotId",
+    "questionId",
+    "activityId",
+    "exploded",
+  ]);
   const ignoredFieldCount = Object.keys(record).filter((key) => !expectedKeys.has(key)).length;
   if (ignoredFieldCount > 0) summary.ignoredFields = ignoredFieldCount;
   return summary;

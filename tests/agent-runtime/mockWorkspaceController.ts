@@ -11,6 +11,7 @@ export type ControllerActionName =
   | "draftRepairPlan"
   | "focusHotspot"
   | "openImageUploader"
+  | "setExplodedView"
   | "refreshGenerationStatus"
   | "requestHumanObservation"
   | "start3DGeneration"
@@ -27,6 +28,8 @@ export const initialWorkspaceSnapshot: WorkspaceSnapshot = {
   imageSelected: false,
   analysisExists: false,
   generationStatus: "idle",
+  modelExists: false,
+  exploded: false,
   hotspots: [],
   unansweredHumanQuestions: [],
   planExists: false,
@@ -102,6 +105,21 @@ export class MockWorkspaceController implements WorkspaceController {
         reversibleActivity: { activityId: "activity.focus", title: "Focused hotspot" },
       },
       hotspotId,
+    );
+  }
+
+  setExplodedView(exploded: boolean, context: WorkspaceActionContext) {
+    return this.perform(
+      "setExplodedView",
+      context,
+      {
+        exploded,
+        reversibleActivity: {
+          activityId: "activity.explode",
+          title: exploded ? "Exploded the 3D model" : "Assembled the 3D model",
+        },
+      },
+      exploded ? "exploded" : "assembled",
     );
   }
 

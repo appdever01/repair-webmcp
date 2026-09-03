@@ -270,6 +270,34 @@ describe("dynamic workspace action layer", () => {
     expect(store.getState().plan).not.toBeNull();
   });
 
+  it("explodes and reassembles a generated model through the same reversible action", async () => {
+    const store = createWorkspaceStore();
+    store.setState({
+      model: { glbUrl: "https://assets.example/model.glb", posterUrl: null },
+      generationStatus: "succeeded",
+      visualMode: "model",
+      exploded: false,
+    });
+
+    expect(store.getState().setExplodedView(true, humanActionOptions(store))).toEqual({ ok: true });
+    expect(store.getState()).toMatchObject({
+      exploded: true,
+      visualMode: "model",
+    });
+    const activityId = store.getState().reversibleActivity?.activityId;
+    expect(activityId).toBeTruthy();
+    expect(store.getState().undoAgentAction(activityId ?? "", humanActionOptions(store))).toEqual({
+      ok: true,
+    });
+    expect(store.getState().exploded).toBe(false);
+
+    expect(store.getState().setExplodedView(true, humanActionOptions(store))).toEqual({ ok: true });
+    expect(store.getState().setExplodedView(false, humanActionOptions(store))).toEqual({
+      ok: true,
+    });
+    expect(store.getState().exploded).toBe(false);
+  });
+
   it("enforces a professional-help safety stop", async () => {
     const store = createWorkspaceStore(
       services({

@@ -16,6 +16,7 @@
   --radius-control: 10px;
   --radius-panel: 16px;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --instant: 100ms;
   --quick: 180ms;
   --move: 320ms;
@@ -30,6 +31,17 @@ html {
   background: var(--ink);
   font-family: var(--font-sans);
   color: var(--paper);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.wordmark-text {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
 }
 
 body {

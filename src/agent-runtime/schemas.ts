@@ -21,6 +21,12 @@ export const agentToolInputSchemas = {
     hotspotId: publicIdSchema.meta({ description: "Visible hotspot ID from workspace state." }),
     expectedStateVersion: stateVersionSchema,
   }),
+  explode_model: z.strictObject({
+    exploded: z.boolean().meta({
+      description: "True separates visible 3D parts. False reassembles them.",
+    }),
+    expectedStateVersion: stateVersionSchema,
+  }),
   request_human_observation: z.strictObject({
     questionId: publicIdSchema.meta({
       description: "Unanswered question ID to present in the human-facing UI.",
@@ -82,6 +88,12 @@ export const agentToolMetadata: Record<AgentToolName, AgentToolMetadata> = {
     description: "Focus one currently available hotspot in the visible workspace.",
     classification: "mutation",
     untrustedContent: true,
+  },
+  explode_model: {
+    title: "Explode model parts",
+    description: "Separate or reassemble the visible 3D model parts.",
+    classification: "mutation",
+    untrustedContent: false,
   },
   request_human_observation: {
     title: "Request human observation",
