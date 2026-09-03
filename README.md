@@ -88,7 +88,20 @@ The activity dock is always discoverable. It shows the currently available actio
 
 The runtime never displays chain-of-thought, image base64, credentials, bearer/session tokens, or signed provider URLs. Every mutating browser-agent action changes visible state. An agent can open the uploader but cannot choose a local file; it can open a question but cannot answer for the person; it can draft guidance but cannot approve or mark physical work complete.
 
-When WebMCP is unavailable, the status reads `Manual mode` and the same product path remains usable through human controls.
+The dock also reports the connection: `Browser agent connected through document.modelContext` with the number of tools registered for the current step, or a note that this browser has no WebMCP and every control works by hand. The same product path remains usable through human controls either way.
+
+## Try it with a browser agent
+
+WebMCP ships behind a flag in Chrome 150 and newer and through a Chrome origin trial.
+
+1. Open `chrome://flags/#enable-webmcp-testing`, set it to Enabled, and relaunch Chrome.
+2. Install Google's [Model Context Tool Inspector](https://github.com/GoogleChromeLabs/webmcp-tools) or any agent that speaks WebMCP.
+3. Open the production URL. The activity dock reports the connection and lists the tools registered for the current step.
+4. Ask the agent to read the workspace state and open the image uploader, choose a photo yourself, then ask it to focus a hotspot or draft the guidance.
+
+Without a WebMCP browser, `Preview guided activity` inside the dock runs the same tool path locally and labels it `Guided demo`.
+
+The runtime prefers `document.modelContext` and falls back to the older `navigator.modelContext`. Registration is diff-based: only newly available tools are registered and only retired tools are unregistered, so the browser never sees a duplicate name, and a refresh waits for in-flight calls so a mutation that retires its own tool still returns its result. Real-browser behavior is exercised with Chrome for Testing 151 launched with `--enable-features=WebMCPTesting`, which exposes `document.modelContext.getTools()` and `executeTool()`.
 
 ## Safety and authority
 
@@ -156,6 +169,8 @@ git diff --check
 
 Tests cap Vitest at two workers. Browser coverage is authored under `tests/e2e`, but should only be run with explicit browser-automation permission.
 
+The three API routes use Vercel's Web `fetch` handler export. A default-exported function would be treated as a Node `(req, res)` handler and never end the response. Relative server imports carry `.js` extensions because Vercel transpiles the API as native ESM.
+
 Performance budgets remain 150 KB gzip for the initial application, 450 KB gzip for the deferred 3D scene, and 1.5 MB for product/social assets.
 
 ## Project map
@@ -165,7 +180,7 @@ api/object/          Stateless analyze, model, and plan routes
 src/agent-runtime/   Observable and redacted WebMCP runtime
 src/generation/      Typed client and public generation contracts
 src/workspace/       Session store, shared actions, controller, and selectors
-src/bench/           Upload, analysis, visual workspace, guidance, and activity UI
+src/bench/           Upload, landing sections, analysis, visual workspace, guidance, and activity UI
 src/scene/           Generated GLB scene, loading/error boundaries, camera controls
 tests/ui/            Manual, failure, polling, safety, and activity coverage
 docs/                Pipeline, demo, and submission documentation

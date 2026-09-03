@@ -38,7 +38,6 @@ describe("Meshy image-to-3D provider", () => {
       texture_prompt: "A visibly worn desk lamp.",
       target_formats: ["glb"],
       moderation: true,
-      image_enhancement: false,
     });
   });
 
@@ -130,5 +129,41 @@ describe("Meshy image-to-3D provider", () => {
     await expect(provider.get("task-1", new AbortController().signal)).rejects.toMatchObject({
       code: "UPSTREAM_TIMEOUT",
     });
+  });
+});
+
+describe("Meshy failure mapping", () => {
+  const provider = new MeshyProvider("meshy-key", 1_000);
+  const input = { imageDataUrl: "data:image/png;base64,QUJD", objectDescription: "cup" };
+  const failure = async (status: number) =>
+    provider.start(input, new AbortController().signal).catch((error: unknown) => error);
+
+  it("reports rejected requests, missing credits, and bad credentials distinctly", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("{}", { status: 400 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 402 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }));
+
+    expect(await failure(400)).toMatchObject({ code: "MODEL_GENERATION_FAILED", status: 502 });
+    expect(await failure(401)).toMatchObject({ code: "CONFIGURATION_ERROR", status: 500 });
+    expect(await failure(402)).toMatchObject({
+      code: "UPSTREAM_UNAVAILABLE",
+      message: expect.stringContaining("credits"),
+      recoverable: false,
+    });
+    expect(await failure(500)).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", recoverable: true });
+  });
+
+  it("does not send image enhancement, which Meshy scopes to standard models", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: "task-9" }), { status: 200 }));
+
+    await provider.start(input, new AbortController().signal);
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body).not.toHaveProperty("image_enhancement");
+    expect(body).toMatchObject({ model_type: "smart-topology", ai_model: "meshy-t2" });
   });
 });

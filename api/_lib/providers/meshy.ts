@@ -49,6 +49,23 @@ function upstreamStatusError(status: number): ApiError {
       true,
     );
   }
+  if (status === 401 || status === 403) {
+    return new ApiError(500, "CONFIGURATION_ERROR", "The 3D generation service is not configured.");
+  }
+  if (status === 402) {
+    return new ApiError(
+      503,
+      "UPSTREAM_UNAVAILABLE",
+      "The 3D provider has no generation credits left right now.",
+    );
+  }
+  if (status === 400) {
+    return new ApiError(
+      502,
+      "MODEL_GENERATION_FAILED",
+      "The 3D provider rejected this photo. Try a clearer JPEG or PNG of the whole object.",
+    );
+  }
   return new ApiError(
     502,
     "UPSTREAM_UNAVAILABLE",
@@ -136,7 +153,6 @@ export class MeshyProvider implements ImageTo3dProvider {
             target_polycount: 15_000,
             texture_prompt: input.objectDescription.slice(0, 800),
             should_texture: true,
-            image_enhancement: false,
             moderation: true,
             target_formats: ["glb"],
           }),
