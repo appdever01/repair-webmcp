@@ -167,3 +167,49 @@ describe("Meshy failure mapping", () => {
     expect(body).toMatchObject({ model_type: "smart-topology", ai_model: "meshy-t2" });
   });
 });
+
+describe("Meshy task payload tolerance", () => {
+  it("accepts empty placeholder URLs and null progress while a task is pending", async () => {
+    const provider = new MeshyProvider("meshy-key", 1_000);
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "PENDING",
+            progress: null,
+            model_urls: { glb: "", fbx: "", obj: "" },
+            thumbnail_url: "",
+            task_error: { message: "" },
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            model_urls: { glb: "https://assets.meshy.ai/task-1.glb", fbx: "" },
+            thumbnail_url: "",
+            task_error: null,
+          }),
+          { status: 200 },
+        ),
+      );
+
+    await expect(provider.get("task-1", new AbortController().signal)).resolves.toEqual({
+      status: "queued",
+      progress: null,
+      model: null,
+      error: null,
+    });
+    await expect(provider.get("task-1", new AbortController().signal)).resolves.toEqual({
+      status: "succeeded",
+      progress: 100,
+      model: { glbUrl: "https://assets.meshy.ai/task-1.glb", posterUrl: null },
+      error: null,
+    });
+  });
+});

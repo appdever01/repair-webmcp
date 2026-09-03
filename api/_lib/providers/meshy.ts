@@ -12,27 +12,21 @@ const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
 
 const createResponseSchema = z.object({ result: z.string().min(1).max(512) }).passthrough();
 
+const optionalHttpsUrl = z.preprocess(
+  (value) => (typeof value === "string" && value.startsWith("https://") ? value : undefined),
+  z.url().optional(),
+);
+
 const taskResponseSchema = z
   .object({
     id: z.string().min(1).max(512),
     status: z.enum(["PENDING", "IN_PROGRESS", "SUCCEEDED", "FAILED", "CANCELED"]),
-    progress: z.number().int().min(0).max(100).optional(),
-    model_urls: z
-      .object({
-        glb: z
-          .url()
-          .refine((value) => value.startsWith("https://"))
-          .optional(),
-      })
-      .passthrough()
-      .optional(),
-    thumbnail_url: z
-      .url()
-      .refine((value) => value.startsWith("https://"))
-      .optional(),
+    progress: z.number().int().min(0).max(100).nullable().optional(),
+    model_urls: z.object({ glb: optionalHttpsUrl }).passthrough().nullable().optional(),
+    thumbnail_url: optionalHttpsUrl,
     task_error: z
       .object({
-        message: z.string().optional(),
+        message: z.string().nullable().optional(),
       })
       .passthrough()
       .nullable()
