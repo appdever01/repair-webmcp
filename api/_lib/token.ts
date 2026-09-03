@@ -69,6 +69,7 @@ function verifyPayload(token: string, secret: string): unknown {
     throw new ApiError(401, "UNAUTHORIZED", "A valid generation session is required.");
   }
   if (
+    supplied.toString("base64url") !== suppliedSignature ||
     supplied.length !== expectedSignature.length ||
     !timingSafeEqual(supplied, expectedSignature)
   ) {
