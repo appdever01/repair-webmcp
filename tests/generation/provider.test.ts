@@ -138,7 +138,7 @@ describe("Meshy failure mapping", () => {
   const failure = async () =>
     provider.start(input, new AbortController().signal).catch((error: unknown) => error);
 
-  it("reports rejected requests, missing credits, and bad credentials distinctly", async () => {
+  it("reports rejected requests, unavailable capacity, and bad credentials distinctly", async () => {
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response("{}", { status: 400 }))
       .mockResolvedValueOnce(new Response("{}", { status: 401 }))
@@ -149,7 +149,7 @@ describe("Meshy failure mapping", () => {
     expect(await failure()).toMatchObject({ code: "CONFIGURATION_ERROR", status: 500 });
     expect(await failure()).toMatchObject({
       code: "UPSTREAM_UNAVAILABLE",
-      message: expect.stringContaining("credits"),
+      message: expect.stringContaining("temporarily unavailable"),
       recoverable: false,
     });
     expect(await failure()).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", recoverable: true });

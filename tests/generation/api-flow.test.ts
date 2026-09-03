@@ -1,7 +1,9 @@
 import { validateImage } from "../../api/_lib/image";
 import { createSessionToken } from "../../api/_lib/token";
 import { handler as analyzeHandler } from "../../api/object/analyze";
+import { handler as chatHandler } from "../../api/object/chat";
 import { handler as diagnosticHandler } from "../../api/object/diagnostic";
+import { handler as guideHandler } from "../../api/object/guide";
 import { handler as modelHandler } from "../../api/object/model";
 import { handler as planHandler } from "../../api/object/plan";
 import { handler as questionHandler } from "../../api/object/question";
@@ -32,7 +34,7 @@ describe("generation API mock flow", () => {
     vi.unstubAllEnvs();
   });
 
-  it("analyzes, interviews, visualizes, starts, polls, and plans without persisting an image or job", async () => {
+  it("analyzes, checks, visualizes, starts, polls, and plans without persisting an image or job", async () => {
     const analyzedResponse = await analyzeHandler(
       request("/api/object/analyze", {
         method: "POST",
@@ -77,7 +79,7 @@ describe("generation API mock flow", () => {
         observation: { kind: "visual", description: "The loose part is visibly separated." },
       },
     ];
-    const completedInterviewResponse = await questionHandler(
+    const completedCheckResponse = await questionHandler(
       request("/api/object/question", {
         method: "POST",
         headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
@@ -89,7 +91,7 @@ describe("generation API mock flow", () => {
         }),
       }),
     );
-    expect(await completedInterviewResponse.json()).toMatchObject({
+    expect(await completedCheckResponse.json()).toMatchObject({
       status: "ready",
       question: null,
     });
@@ -127,7 +129,45 @@ describe("generation API mock flow", () => {
         }),
       }),
     );
-    expect(await planResponse.json()).toMatchObject({ plan: { riskLevel: "moderate" } });
+    const planned = await planResponse.json();
+    expect(planned).toMatchObject({
+      plan: { riskLevel: "moderate" },
+      planToken: expect.any(String),
+    });
+
+    const guideResponse = await guideHandler(
+      request("/api/object/guide", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({
+          planToken: planned.planToken,
+          image: pngImage(),
+          analysis: analyzed.analysis,
+          plan: planned.plan,
+          stepIndex: 0,
+        }),
+      }),
+    );
+    expect(await guideResponse.json()).toMatchObject({
+      stepIndex: 0,
+      image: { mediaType: "image/png", base64: pngImage().base64 },
+    });
+
+    const chatResponse = await chatHandler(
+      request("/api/object/chat", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${analyzed.sessionToken}` },
+        body: JSON.stringify({
+          planToken: planned.planToken,
+          image: pngImage(),
+          analysis: analyzed.analysis,
+          plan: planned.plan,
+          activeStepIndex: 0,
+          messages: [{ role: "user", content: "What should I check first?" }],
+        }),
+      }),
+    );
+    expect(await chatResponse.json()).toMatchObject({ answer: expect.any(String) });
   });
 
   it("rejects analysis or image data that does not match the signed session", async () => {
@@ -211,7 +251,7 @@ describe("generation API mock flow", () => {
     expect(await response.json()).toEqual({
       status: "ready",
       question: null,
-      message: "The safety classification requires qualified help instead of more questions.",
+      message: "The safety finding requires qualified help instead of repair steps.",
     });
   });
 });

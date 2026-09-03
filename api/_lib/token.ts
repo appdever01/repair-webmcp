@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import type { ObjectAnalysis } from "../../src/generation/contracts.js";
+import type { ObjectAnalysis, RepairPlan } from "../../src/generation/contracts.js";
 import { ApiError } from "./errors.js";
 
 const sessionPayloadSchema = z
@@ -27,8 +27,20 @@ const jobPayloadSchema = z
   })
   .strict();
 
+const planPayloadSchema = z
+  .object({
+    v: z.literal(1),
+    kind: z.literal("repair_plan"),
+    sessionId: z.string().uuid(),
+    planHash: z.string().min(20).max(100),
+    issuedAt: z.number().int().nonnegative(),
+    expiresAt: z.number().int().positive(),
+  })
+  .strict();
+
 export type SessionPayload = z.infer<typeof sessionPayloadSchema>;
 export type JobPayload = z.infer<typeof jobPayloadSchema>;
+export type PlanPayload = z.infer<typeof planPayloadSchema>;
 
 function canonicalize(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -47,6 +59,12 @@ function canonicalize(value: unknown): unknown {
 export function hashAnalysis(analysis: ObjectAnalysis): string {
   return createHash("sha256")
     .update(JSON.stringify(canonicalize(analysis)))
+    .digest("base64url");
+}
+
+export function hashRepairPlan(plan: RepairPlan): string {
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(plan)))
     .digest("base64url");
 }
 
@@ -152,6 +170,44 @@ export function verifyJobToken(
   const parsed = jobPayloadSchema.safeParse(verifyPayload(token, secret));
   if (!parsed.success || parsed.data.sessionId !== session.sessionId) {
     throw new ApiError(401, "UNAUTHORIZED", "This model job does not belong to the session.");
+  }
+  assertNotExpired(parsed.data.expiresAt, nowSeconds);
+  return parsed.data;
+}
+
+export function createPlanToken(
+  plan: RepairPlan,
+  session: SessionPayload,
+  secret: string,
+  nowSeconds = Math.floor(Date.now() / 1_000),
+): string {
+  return signPayload(
+    {
+      v: 1,
+      kind: "repair_plan",
+      sessionId: session.sessionId,
+      planHash: hashRepairPlan(plan),
+      issuedAt: nowSeconds,
+      expiresAt: session.expiresAt,
+    } satisfies PlanPayload,
+    secret,
+  );
+}
+
+export function verifyPlanToken(
+  token: string,
+  plan: RepairPlan,
+  session: SessionPayload,
+  secret: string,
+  nowSeconds = Math.floor(Date.now() / 1_000),
+): PlanPayload {
+  const parsed = planPayloadSchema.safeParse(verifyPayload(token, secret));
+  if (
+    !parsed.success ||
+    parsed.data.sessionId !== session.sessionId ||
+    parsed.data.planHash !== hashRepairPlan(plan)
+  ) {
+    throw new ApiError(401, "UNAUTHORIZED", "This repair plan does not belong to the session.");
   }
   assertNotExpired(parsed.data.expiresAt, nowSeconds);
   return parsed.data;

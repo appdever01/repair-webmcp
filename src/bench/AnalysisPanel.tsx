@@ -15,23 +15,11 @@ export function AnalysisPanel() {
   const [draftName, setDraftName] = useState(displayedName);
   if (!analysis) return null;
 
-  const areaCount = analysis.hotspots.length;
-
   return (
-    <section className="analysis-panel" id="object-analysis" aria-labelledby="analysis-title">
+    <section className="analysis-panel" id="object-analysis" aria-label="AI assessment">
       <details className="analysis-disclosure">
         <summary>
-          <div>
-            <p className="eyebrow">AI assessment</p>
-            <h2 id="analysis-title">{displayedName}</h2>
-          </div>
           <div className="analysis-summary-facts">
-            <span>
-              {areaCount} {areaCount === 1 ? "area" : "areas"} marked
-            </span>
-            <span data-risk={analysis.safety.riskLevel}>
-              {analysis.safety.riskLevel.replaceAll("_", " ")}
-            </span>
             <b>
               Review findings <RepairIcon name="down" size={16} />
             </b>
@@ -131,8 +119,8 @@ export function AnalysisPanel() {
           {analysis.hotspots.length > 0 && (
             <div className="hotspot-index">
               <h3>Areas to inspect</h3>
-              <ol>
-                {analysis.hotspots.map((hotspot, index) => (
+              <ul>
+                {analysis.hotspots.map((hotspot) => (
                   <li key={hotspot.id} data-focused={focusedHotspotId === hotspot.id}>
                     <button
                       type="button"
@@ -143,7 +131,6 @@ export function AnalysisPanel() {
                           .focusHotspot(hotspot.id, humanActionOptions(workspaceStore))
                       }
                     >
-                      <b>{index + 1}</b>
                       <span>
                         <strong>{hotspot.label}</strong>
                         <small>{hotspot.description}</small>
@@ -151,7 +138,7 @@ export function AnalysisPanel() {
                     </button>
                   </li>
                 ))}
-              </ol>
+              </ul>
             </div>
           )}
         </div>

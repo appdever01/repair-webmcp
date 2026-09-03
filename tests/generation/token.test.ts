@@ -1,11 +1,13 @@
 import {
   assertSessionBindings,
   createJobToken,
+  createPlanToken,
   createSessionToken,
   verifyJobToken,
+  verifyPlanToken,
   verifySessionToken,
 } from "../../api/_lib/token";
-import { objectAnalysis } from "./fixtures";
+import { objectAnalysis, repairPlan } from "./fixtures";
 
 const SECRET = "a-production-length-secret-that-is-at-least-32-bytes";
 
@@ -55,6 +57,35 @@ describe("generation signed tokens", () => {
     expect(verifyJobToken(job, first, SECRET, 103).providerJobId).toBe("provider-job");
     expect(job).not.toContain("provider-job");
     expect(() => verifyJobToken(job, second, SECRET, 103)).toThrow(
+      expect.objectContaining({ code: "UNAUTHORIZED" }),
+    );
+  });
+
+  it("binds generated visuals to the exact repair plan and session", () => {
+    const first = verifySessionToken(
+      createSessionToken("image-hash-value-123456789", objectAnalysis(), SECRET, 60, 100),
+      SECRET,
+      101,
+    );
+    const second = verifySessionToken(
+      createSessionToken("image-hash-value-123456789", objectAnalysis(), SECRET, 60, 100),
+      SECRET,
+      101,
+    );
+    const plan = repairPlan();
+    const token = createPlanToken(plan, first, SECRET, 102);
+
+    expect(() => verifyPlanToken(token, plan, first, SECRET, 103)).not.toThrow();
+    expect(() =>
+      verifyPlanToken(
+        token,
+        { ...plan, toolsAndMaterials: ["Different tool"] },
+        first,
+        SECRET,
+        103,
+      ),
+    ).toThrow(expect.objectContaining({ code: "UNAUTHORIZED" }));
+    expect(() => verifyPlanToken(token, plan, second, SECRET, 103)).toThrow(
       expect.objectContaining({ code: "UNAUTHORIZED" }),
     );
   });

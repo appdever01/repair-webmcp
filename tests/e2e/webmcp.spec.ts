@@ -30,7 +30,7 @@ test("registers stage-aware tools on document.modelContext and executes them", a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveText(/2 actions/);
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/2 actions/);
   expect(await toolNames(page)).toEqual(["get_workspace_state", "open_image_uploader"]);
 
   const state = await execute(page, "get_workspace_state", {});
@@ -42,10 +42,8 @@ test("registers stage-aware tools on document.modelContext and executes them", a
     stateVersion: 1,
     affectedTarget: { id: "image-uploader" },
   });
-  await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveText(/3 actions/);
-  await expect(
-    page.getByText("Browser agent connected through document.modelContext", { exact: false }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/3 actions/);
+  await expect(page.getByText("Assistant ready.", { exact: false })).toBeVisible();
   await expect(
     page.getByText("Image uploader was updated in the visible workspace."),
   ).toBeVisible();
@@ -63,7 +61,7 @@ test("registers stage-aware tools on document.modelContext and executes them", a
     expectedStateVersion: 1,
   });
   expect(undone).toMatchObject({ ok: true, stateVersion: 2 });
-  await expect(page.getByRole("button", { name: /Agent activity/ })).toHaveText(/2 actions/);
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/2 actions/);
   expect(await toolNames(page)).toEqual(["get_workspace_state", "open_image_uploader"]);
   expect(pageErrors).toEqual([]);
 });

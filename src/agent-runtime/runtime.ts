@@ -377,7 +377,7 @@ async function runControllerAction(
 }
 
 function userSafeRegistrationError(): string {
-  return "WebMCP tools could not be registered.";
+  return "Assistance could not be connected.";
 }
 
 function executionSignal(options: WebMCP.ToolExecuteCallbackOptions | undefined): AbortSignal {

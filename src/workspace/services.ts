@@ -1,7 +1,9 @@
 import {
   analyzeObject,
+  askRepairAssistant,
   draftRepairPlan,
   generateDiagnosticView,
+  generateRepairStepVisual,
   getModelGeneration,
   getNextQuestion,
   startModelGeneration,
@@ -10,7 +12,9 @@ import { prepareImage } from "./image";
 
 export interface WorkspaceServices {
   analyzeObject: typeof analyzeObject;
+  askRepairAssistant: typeof askRepairAssistant;
   generateDiagnosticView: typeof generateDiagnosticView;
+  generateRepairStepVisual: typeof generateRepairStepVisual;
   getNextQuestion: typeof getNextQuestion;
   startModelGeneration: typeof startModelGeneration;
   getModelGeneration: typeof getModelGeneration;
@@ -39,7 +43,9 @@ export function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
 
 export const defaultWorkspaceServices: WorkspaceServices = {
   analyzeObject,
+  askRepairAssistant,
   generateDiagnosticView,
+  generateRepairStepVisual,
   getNextQuestion,
   startModelGeneration,
   getModelGeneration,

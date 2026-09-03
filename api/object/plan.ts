@@ -10,7 +10,7 @@ import {
 } from "../_lib/http.js";
 import { planWithOpenAI } from "../_lib/openai.js";
 import { professionalHelpPlan, requiresProfessionalHelp } from "../_lib/safety.js";
-import { assertSessionBindings, verifySessionToken } from "../_lib/token.js";
+import { assertSessionBindings, createPlanToken, verifySessionToken } from "../_lib/token.js";
 
 export function handler(request: Request): Promise<Response> {
   return handleApi(async () => {
@@ -23,7 +23,8 @@ export function handler(request: Request): Promise<Response> {
     const plan = requiresProfessionalHelp(input.analysis)
       ? professionalHelpPlan(input.analysis)
       : await planWithOpenAI(input, config, request.signal);
-    return jsonResponse({ plan });
+    const planToken = createPlanToken(plan, session, config.sessionSigningSecret);
+    return jsonResponse({ plan, planToken });
   });
 }
 

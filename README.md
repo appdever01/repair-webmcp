@@ -15,7 +15,7 @@
   </p>
 </div>
 
-RE:PAIR is a photo-first repair workspace shared by a person and a browser agent. A person selects an image of an everyday object, decides when it may be analyzed, supplies real-world observations, and keeps authority over every physical decision. The application contributes structured visual analysis, visible hypotheses, synchronized hotspots, cautious repair guidance, and an optional generated 3D view.
+RE:PAIR is a photo-first repair workspace shared by a person and a browser agent. A person selects an image of an everyday object, decides when it may be analyzed, supplies real-world observations, and keeps authority over every physical decision. The application contributes structured visual analysis, synchronized hotspots, a concise step-by-step repair guide with generated wireframes, and an optional 3D view.
 
 The product is deliberately evidence-led: it distinguishes what is visible from what is inferred, exposes uncertainty, and stops at qualified help when the object is unsafe to diagnose or repair remotely.
 
@@ -63,19 +63,22 @@ Try the deployed application at **[repair-webmcp.vercel.app](https://repair-webm
 
 1. Accepts one JPEG, PNG, or WebP photo and an optional description of the problem.
 2. Keeps the initial preview local until the person chooses **Start analysis**.
-3. Uses OpenAI to return structured object identification, visible condition, hypotheses, uncertainty, hotspots, and a safety classification.
-4. Runs an adaptive visual interview: OpenAI chooses one image-specific question at a time, then uses each human answer to decide what to ask next or when to stop.
-5. Drafts a cautious repair plan that includes supporting evidence, conflicting evidence, unknowns, limitations, stop conditions, and one recommended next action.
-6. Optionally sends a prepared reference to Meshy and presents the returned GLB in an interactive 3D scene.
-7. Makes appropriate page actions available to a WebMCP-capable browser agent.
+3. Uses OpenAI to return structured object identification, visible condition, hypotheses, uncertainty, hotspots, and a safety classification, then generates a damage map that circles and labels every important visible point.
+4. Reveals the repair controls only after that damage map is ready, then runs a brief visual check when one safe, image-specific detail would materially improve the repair.
+5. Drafts up to five necessary repair steps and opens a dedicated guide while OpenAI progressively generates a tightly targeted wireframe for each one; generated step text stays crisp in the interface instead of being baked into image pixels.
+6. Lets the person toggle the guide into a Meshy-powered interactive 3D view without losing their step.
+7. Provides a contextual OpenAI repair chat for questions about the active step, tools, and stop conditions.
+8. Makes appropriate page actions available to a WebMCP-capable browser agent.
 
 ### Core capabilities
 
 | Capability | Behavior |
 | --- | --- |
 | Photo-first intake | Drag, drop, or choose a photo; preview it before anything is sent. |
-| Adaptive interview | Validated image-specific questions, quick replies, human observations, and an explicit ready state. |
+| Brief photo check | One safe image-specific detail when it would improve the repair steps, with an explicit ready state. |
 | Evidence-led guidance | Hypotheses retain evidence for, evidence against, and unresolved unknowns. |
+| Visual repair guide | Up to five generated wireframes stay synchronized with one current step and CTA. |
+| Contextual repair chat | OpenAI answers questions from the signed plan, active step, photo, and safety context. |
 | Safety stops | High-risk categories deterministically switch to professional-help-only guidance. |
 | Progressive 3D | A generated model enhances the workspace but is never required for the repair path. |
 | Visible WebMCP | Site-tool registration, calls, results, duration, and visible effects appear in the activity dock. |
@@ -90,8 +93,8 @@ Try the deployed application at **[repair-webmcp.vercel.app](https://repair-webm
 | State | Zustand with a shared versioned action layer |
 | Validation | Zod schemas and generated JSON Schema |
 | 3D | Three.js, React Three Fiber, Drei |
-| AI analysis, interview, and planning | OpenAI Responses API |
-| Optional image preparation | OpenAI Image API |
+| AI analysis, photo check, and planning | OpenAI Responses API |
+| Damage maps, repair wireframes, and optional image preparation | OpenAI Image API |
 | Optional image-to-3D | Meshy |
 | Browser-agent integration | WebMCP through `document.modelContext` |
 | Hosting | Vercel static output and serverless functions |
@@ -166,12 +169,13 @@ Never expose provider credentials through `VITE_` variables. Variables prefixed 
 2. Choose or drop one supported image.
 3. Confirm the preview and optionally describe the symptom.
 4. Select **Start analysis**.
-5. Compare the original with the OpenAI damage map and select numbered areas for details.
+5. Compare the clean original with the OpenAI damage map, where important points are circled and labeled.
 6. Review the visible condition, safety status, and possible causes in the assessment drawer.
 7. Correct the displayed object name if necessary.
-8. Answer each AI-generated question from a real observation; every answer determines whether another question is useful.
-9. When the AI interview reports that it has enough context, request and review cautious guidance, evidence, unknowns, and stop conditions.
-10. Open the 3D tab to generate and explore a Meshy model when the safety category allows it.
+8. Add a visible detail only if the quick photo check asks for one.
+9. Select **Let’s start fixing** to open the dedicated guide; step one appears first while the remaining visuals generate in the background.
+10. Use **View in 3D** to generate and explore a Meshy model without leaving the guide.
+11. Open **Ask RE:PAIR** for questions about the active step, tools, materials, or when to stop.
 
 ### Choosing a useful photo
 
@@ -257,7 +261,7 @@ The runtime always begins with a read operation and registers additional tools o
 | `focus_hotspot` | Mutation | Analysis exposes one or more hotspots | Focuses a visible photo or model hotspot. |
 | `explode_model` | Mutation | A model is loaded | Separates or reassembles visible model components. |
 | `request_human_observation` | Mutation | An unanswered question exists | Opens a visible question without supplying an answer. |
-| `draft_repair_plan` | Mutation | Analysis exists, the adaptive interview is complete, and no task is active | Drafts visible guidance for review. |
+| `draft_repair_plan` | Mutation | Analysis exists, the brief photo check is complete, and no task is active | Drafts the illustrated repair guide. |
 | `cancel_current_task` | Mutation | Analysis or generation is active | Requests cancellation through the shared action layer. |
 | `undo_agent_action` | Mutation | A reversible browser-agent action exists | Reverses that action and records the reversal. |
 
@@ -281,11 +285,13 @@ flowchart LR
   Client --> Question[Adaptive question API]
   Client --> Model[Model start and polling API]
   Client --> Plan[Repair plan API]
+  Client --> Guide[Repair-step visual API]
   Analyze --> OpenAI[OpenAI Responses]
   Question --> OpenAI
   Model --> ImageEdit[Optional OpenAI image edit]
   Model --> Provider[Configured image-to-3D provider]
   Plan --> OpenAI
+  Guide --> ImageEdit
   Provider --> Asset[Session-authorized GLB proxy]
   Asset --> Scene[React Three Fiber scene]
   Scene --> UI
@@ -317,7 +323,12 @@ sequenceDiagram
   end
   UI->>API: POST repair-plan request
   API->>OpenAI: Signed analysis plus question-and-answer history
-  OpenAI-->>UI: Evidence, unknowns, stop conditions, next action
+  OpenAI-->>UI: Signed plan with up to five necessary steps
+  loop Each repair step
+    UI->>API: Request signed step visual
+    API->>OpenAI: Edit source into focused wireframe
+    OpenAI-->>UI: Targeted frame without baked-in typography
+  end
   opt Optional 3D
     UI->>API: Start model generation
     API->>Provider: Prepared reference image
@@ -332,7 +343,7 @@ sequenceDiagram
 
 ### State model
 
-- Zustand owns one session-only workspace.
+- Zustand owns one workspace that is restored from browser IndexedDB after a refresh.
 - Human controls and browser-agent tools call the same controller.
 - Each successful mutation increments `stateVersion`.
 - Tool inputs use strict schemas and reject unknown fields.
@@ -348,8 +359,10 @@ sequenceDiagram
 | --- | --- | --- | --- |
 | `POST` | `/api/object/analyze` | Validate and analyze the uploaded image. | Exact same-origin browser request |
 | `POST` | `/api/object/diagnostic` | Generate the wireframe damage-map comparison. | Bearer session token |
-| `POST` | `/api/object/question` | Choose the next adaptive question or end the interview. | Bearer session token |
+| `POST` | `/api/object/question` | Request one useful visible detail or mark the photo check ready. | Bearer session token |
 | `POST` | `/api/object/plan` | Draft a repair plan from signed analysis and the complete answer history. | Bearer session token |
+| `POST` | `/api/object/guide` | Generate one wireframe for a signed repair-plan step. | Bearer session token plus signed plan token |
+| `POST` | `/api/object/chat` | Answer a contextual question about the signed plan and active step. | Bearer session token plus signed plan token |
 | `POST` | `/api/object/model` | Validate the session and start optional image-to-3D generation. | Bearer session token |
 | `GET` | `/api/object/model?jobId=…` | Poll a signed generation job. | Bearer session token |
 | `GET` | `/api/object/asset?jobId=…` | Revalidate the job and stream the finished GLB from this origin. | Bearer session token |
@@ -369,7 +382,7 @@ OpenAI receives the image as a data URL and returns strict structured output wit
 
 ### Signed sessions
 
-The analysis response includes a short-lived HMAC-signed session token. The token binds the session to hashes of the image and analysis. Provider task IDs are wrapped in separate opaque, session-bound job tokens. Uploaded image bytes and provider payloads are never embedded in those tokens.
+The analysis response includes a short-lived HMAC-signed session token. The token binds the session to hashes of the image and analysis. Repair plans and provider task IDs are wrapped in separate opaque, session-bound tokens. Uploaded image bytes and provider payloads are never embedded in those tokens.
 
 ### Optional 3D generation
 
@@ -404,9 +417,9 @@ The analysis contract can identify ordinary objects, mains electricity, damaged 
 
 ### Data handling
 
-- The original `File` remains in memory only until generation reaches a terminal state or the task is cancelled.
-- The compressed image stays in the current session for retry and planning.
-- Object URLs are revoked when an image is replaced, removed, reset, or unmounted.
+- The selected file, compressed image, analysis, answers, generated damage map, repair plan, step visuals, active guide view, and repair chat are stored in this origin's browser IndexedDB so a refresh restores the workspace.
+- **Start new**, photo replacement, and removal clear or replace that saved workspace; people using a shared device should use **Start new** when finished.
+- Object URLs are revoked when an image is replaced, removed, reset, or unmounted and are reconstructed safely during restoration.
 - No image, token, answer, activity, or provenance record is written to `localStorage`.
 - The server does not write uploaded images, jobs, or provider payloads to a database, object store, or application log.
 - OpenAI and Meshy process data under their own account configuration and data policies.
@@ -438,7 +451,7 @@ Copy `.env.example` to `.env.local` for local full-stack development. Configure 
 | --- | --- | --- | --- |
 | `OPENAI_API_KEY` | Analysis and planning outside mock mode | None | Server-side OpenAI credential. |
 | `OPENAI_ANALYSIS_MODEL` | Analysis and planning outside mock mode | None | Account-accessible model supporting image input and Structured Outputs. |
-| `OPENAI_IMAGE_MODEL` | Damage map outside mock mode | None | GPT Image edit model used for the diagnostic comparison and optional normalization. |
+| `OPENAI_IMAGE_MODEL` | Damage maps and repair visuals outside mock mode | None | GPT Image edit model used for diagnostic, step, and optional normalization images. |
 | `IMAGE_TO_3D_PROVIDER` | No | `meshy` | Image-to-3D provider; mock mode overrides it locally. |
 | `MESHY_API_KEY` | Optional 3D outside mock mode | None | Server-side Meshy credential. |
 | `SESSION_SIGNING_SECRET` | Production | Development-only fallback locally | Random signing value of at least 32 bytes in production. |
@@ -510,8 +523,8 @@ The repository is configured for Vercel with a Vite build, `dist` output, and ca
 5. Add production environment variables from the table above.
 6. Set a cryptographically random `SESSION_SIGNING_SECRET` of at least 32 bytes.
 7. Leave `GENERATION_MOCK_MODE` disabled; production ignores it regardless.
-8. Configure rate limits or Vercel Firewall rules for `/api/object/analyze`, `/api/object/question`, `/api/object/diagnostic`, `/api/object/model`, and `/api/object/plan`.
-9. Deploy and verify the home page, analysis and adaptive-interview paths, plan path, optional model polling, and same-origin GLB stream.
+8. Configure rate limits or Vercel Firewall rules for `/api/object/analyze`, `/api/object/question`, `/api/object/diagnostic`, `/api/object/guide`, `/api/object/chat`, `/api/object/model`, and `/api/object/plan`.
+9. Deploy and verify the home page, analysis and photo-check paths, illustrated guide, optional model polling, and same-origin GLB stream.
 10. Open the deployed page in a compatible built-in browser and confirm the expected site tools appear for the current stage.
 
 ### WebMCP origin requirements
@@ -569,7 +582,7 @@ Stable API error codes and provider-specific failure behavior are documented in 
 .
 ├── api/
 │   ├── _lib/                 Shared configuration, validation, security, tokens, and providers
-│   └── object/               Analyze, interview, diagnostic, plan, model, and asset routes
+│   └── object/               Analyze, photo-check, diagnostic, guide, plan, model, and asset routes
 ├── docs/
 │   ├── assets/               Documentation screenshots and provider examples
 │   ├── demo-script.md        Guided product demonstration

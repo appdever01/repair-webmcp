@@ -7,6 +7,7 @@ export {
   prepareImage,
   validateImageFile,
 } from "./image";
+export type { PersistedWorkspaceRecord, WorkspacePersistence } from "./persistence";
 export {
   selectActiveQuestion,
   selectDisplayedObjectName,
@@ -26,6 +27,7 @@ export type {
   DiagnosticStatus,
   QuestionAnswer,
   QuestionStatus,
+  RepairStepVisualState,
   SelectedImage,
   WorkspaceActionSource,
   WorkspaceStage,

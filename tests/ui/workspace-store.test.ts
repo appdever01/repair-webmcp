@@ -4,11 +4,13 @@ import type {
   ObjectAnalysis,
   RepairPlan,
 } from "../../src/generation/contracts";
+import { repairGuideSteps } from "../../src/generation/repairGuide";
 import { createWorkspaceStore, humanActionOptions } from "../../src/workspace";
 import type { WorkspaceServices } from "../../src/workspace/services";
 
 const image = { mediaType: "image/jpeg" as const, base64: "YWJjZA==" };
 const sessionToken = "s".repeat(48);
+const planToken = "p".repeat(48);
 const jobId = "j".repeat(48);
 
 function analysis(overrides: Partial<ObjectAnalysis> = {}): ObjectAnalysis {
@@ -62,8 +64,29 @@ function plan(): RepairPlan {
         caution: "Do not reach through the guard.",
       },
     ],
-    proposedRepairPlan: [],
-    toolsAndMaterials: [],
+    proposedRepairPlan: [
+      {
+        title: "Choose the hand tool",
+        instructions: "Match the visible fastener before applying force.",
+        caution: null,
+      },
+      {
+        title: "Support the guard",
+        instructions: "Hold the guard in alignment without reaching through it.",
+        caution: null,
+      },
+      {
+        title: "Tighten the fastener",
+        instructions: "Turn the fastener only until the guard is snug.",
+        caution: "Stop if the fastener binds.",
+      },
+      {
+        title: "Verify the guard",
+        instructions: "Confirm the guard remains aligned while the fan stays unplugged.",
+        caution: null,
+      },
+    ],
+    toolsAndMaterials: ["Matching hand tool"],
     stopConditions: ["Stop if damaged wiring is visible."],
     professionalHelp: { required: false, reason: "No high-risk work is proposed." },
   };
@@ -73,8 +96,13 @@ function services(
   values: {
     analyzed?: ObjectAnalysis;
     analyzeError?: Error;
+    analyze?: WorkspaceServices["analyzeObject"];
     polls?: GetModelGenerationResponse[];
     questions?: NextQuestionResponse[];
+    diagnostic?: WorkspaceServices["generateDiagnosticView"];
+    guide?: WorkspaceServices["generateRepairStepVisual"];
+    assistant?: WorkspaceServices["askRepairAssistant"];
+    startModel?: WorkspaceServices["startModelGeneration"];
     wait?: WorkspaceServices["wait"];
   } = {},
 ): WorkspaceServices {
@@ -87,11 +115,20 @@ function services(
       width: 640,
       height: 480,
     })),
-    analyzeObject: vi.fn(async () => {
-      if (values.analyzeError) throw values.analyzeError;
-      return { sessionToken, analysis: values.analyzed ?? analysis() };
-    }),
-    generateDiagnosticView: vi.fn(async () => ({ image })),
+    analyzeObject:
+      values.analyze ??
+      vi.fn(async () => {
+        if (values.analyzeError) throw values.analyzeError;
+        return { sessionToken, analysis: values.analyzed ?? analysis() };
+      }),
+    askRepairAssistant:
+      values.assistant ??
+      vi.fn(async () => ({
+        answer: "Use the current step and stop if the condition changes.",
+      })),
+    generateDiagnosticView: values.diagnostic ?? vi.fn(async () => ({ image })),
+    generateRepairStepVisual:
+      values.guide ?? vi.fn(async ({ stepIndex }) => ({ stepIndex, image })),
     getNextQuestion: vi.fn(
       async ({ answers }) =>
         questions.shift() ??
@@ -114,17 +151,19 @@ function services(
               message: "I have enough observations to prepare guidance.",
             }),
     ),
-    startModelGeneration: vi.fn(async () => ({
-      jobId,
-      status: "queued" as const,
-      message: "Queued.",
-    })),
+    startModelGeneration:
+      values.startModel ??
+      vi.fn(async () => ({
+        jobId,
+        status: "queued" as const,
+        message: "Queued.",
+      })),
     getModelGeneration: vi.fn(async () => {
       const next = polls.shift();
       if (!next) throw new Error("No poll response configured.");
       return next;
     }),
-    draftRepairPlan: vi.fn(async () => ({ plan: plan() })),
+    draftRepairPlan: vi.fn(async () => ({ plan: plan(), planToken })),
     wait: values.wait ?? vi.fn(async () => undefined),
   };
 }
@@ -192,16 +231,14 @@ describe("dynamic workspace action layer", () => {
     expect(store.getState().announcement).toBe("Analysis is unavailable.");
   });
 
-  it("generates a signed diagnostic view without blocking the rest of the workspace", async () => {
+  it("opens and generates the signed damage map immediately after analysis", async () => {
     const mocked = services();
     const store = createWorkspaceStore(mocked);
     store.getState().selectImage(photo());
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
+    await vi.waitFor(() => expect(store.getState().diagnosticStatus).toBe("succeeded"));
 
-    await expect(
-      store.getState().generateDiagnosticView(humanActionOptions(store)),
-    ).resolves.toEqual({ ok: true });
-
+    expect(mocked.generateDiagnosticView).toHaveBeenCalledOnce();
     expect(mocked.generateDiagnosticView).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionToken,
@@ -215,6 +252,29 @@ describe("dynamic workspace action layer", () => {
       visualMode: "diagnostic",
       isBusy: false,
     });
+  });
+
+  it("waits for the damage map before requesting a repair detail", async () => {
+    let finishDiagnostic: ((value: { image: typeof image }) => void) | undefined;
+    const diagnostic = vi.fn(
+      () =>
+        new Promise<{ image: typeof image }>((resolve) => {
+          finishDiagnostic = resolve;
+        }),
+    );
+    const mocked = services({ diagnostic });
+    const store = createWorkspaceStore(mocked);
+    store.getState().selectImage(photo());
+
+    await store.getState().analyzeUploadedObject(humanActionOptions(store));
+
+    expect(store.getState().diagnosticStatus).toBe("generating");
+    expect(mocked.getNextQuestion).not.toHaveBeenCalled();
+
+    finishDiagnostic?.({ image });
+    await vi.waitFor(() => expect(store.getState().questionStatus).toBe("asking"));
+
+    expect(mocked.getNextQuestion).toHaveBeenCalledOnce();
   });
 
   it("preserves Meshy progress and offers an in-place retry after model failure", async () => {
@@ -257,6 +317,46 @@ describe("dynamic workspace action layer", () => {
       visualMode: "model",
       image: expect.any(Object),
       originalFile: null,
+    });
+  });
+
+  it("refreshes an expired analysis session before retrying 3D generation", async () => {
+    const refreshedSessionToken = "r".repeat(48);
+    const analyze = vi
+      .fn<WorkspaceServices["analyzeObject"]>()
+      .mockResolvedValueOnce({ sessionToken, analysis: analysis() })
+      .mockResolvedValueOnce({ sessionToken: refreshedSessionToken, analysis: analysis() });
+    const expired = Object.assign(new Error("The generation session has expired."), {
+      code: "SESSION_EXPIRED",
+    });
+    const startModel = vi
+      .fn<WorkspaceServices["startModelGeneration"]>()
+      .mockRejectedValueOnce(expired)
+      .mockResolvedValueOnce({ jobId, status: "queued", message: "Queued." });
+    const mocked = services({
+      analyze,
+      startModel,
+      wait: vi.fn(() => new Promise<void>(() => undefined)),
+    });
+    const store = createWorkspaceStore(mocked);
+    store.getState().selectImage(photo());
+    await store.getState().analyzeUploadedObject(humanActionOptions(store));
+
+    await expect(store.getState().start3DGeneration(humanActionOptions(store))).resolves.toEqual({
+      ok: true,
+    });
+
+    expect(analyze).toHaveBeenCalledTimes(2);
+    expect(startModel).toHaveBeenCalledTimes(2);
+    expect(startModel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sessionToken: refreshedSessionToken }),
+      expect.any(AbortSignal),
+    );
+    expect(store.getState()).toMatchObject({
+      sessionToken: refreshedSessionToken,
+      generationStatus: "queued",
+      generationError: null,
+      isBusy: true,
     });
   });
 
@@ -347,6 +447,93 @@ describe("dynamic workspace action layer", () => {
       expect.any(AbortSignal),
     );
     expect(store.getState().plan).not.toBeNull();
+    await vi.waitFor(() =>
+      expect(
+        store.getState().repairStepVisuals.every((visual) => visual.status === "succeeded"),
+      ).toBe(true),
+    );
+    expect(mocked.generateRepairStepVisual).toHaveBeenCalledTimes(5);
+    expect(store.getState()).toMatchObject({
+      activeRepairStepIndex: 0,
+      visualMode: "guide",
+      guidePageOpen: true,
+      planToken,
+    });
+  });
+
+  it("shows step one while the remaining repair visuals continue in the background", async () => {
+    let finishSecond: ((value: { stepIndex: number; image: typeof image }) => void) | undefined;
+    const guide = vi.fn(async ({ stepIndex }: { stepIndex: number }) => {
+      if (stepIndex !== 1) return { stepIndex, image };
+      return new Promise<{ stepIndex: number; image: typeof image }>((resolve) => {
+        finishSecond = resolve;
+      });
+    });
+    const store = createWorkspaceStore(services({ guide }));
+    const repairPlan = plan();
+    store.setState({
+      image: { name: "fan.jpg", previewUrl: "blob:fan", width: 640, height: 480 },
+      compressedImage: image,
+      analysis: analysis(),
+      sessionToken,
+      plan: repairPlan,
+      planToken,
+      guidePageOpen: true,
+      visualMode: "guide",
+      repairStepVisuals: repairGuideSteps(repairPlan).map(() => ({
+        status: "idle",
+        image: null,
+        error: null,
+      })),
+    });
+
+    const generation = store.getState().generateRepairStepVisuals(humanActionOptions(store));
+    await vi.waitFor(() =>
+      expect(store.getState().repairStepVisuals[1]?.status).toBe("generating"),
+    );
+
+    expect(store.getState().repairStepVisuals[0]?.status).toBe("succeeded");
+    expect(store.getState().activeRepairStepIndex).toBe(0);
+    expect(guide).toHaveBeenCalledTimes(2);
+
+    finishSecond?.({ stepIndex: 1, image });
+    await expect(generation).resolves.toEqual({ ok: true });
+    expect(
+      store.getState().repairStepVisuals.every((visual) => visual.status === "succeeded"),
+    ).toBe(true);
+  });
+
+  it("keeps a contextual repair conversation in workspace state", async () => {
+    const assistant = vi.fn(async () => ({
+      answer: "Use the matching hand tool shown in step 2.",
+    }));
+    const store = createWorkspaceStore(services({ assistant }));
+    store.setState({
+      image: { name: "fan.jpg", previewUrl: "blob:fan", width: 640, height: 480 },
+      compressedImage: image,
+      analysis: analysis(),
+      sessionToken,
+      plan: plan(),
+      planToken,
+      activeRepairStepIndex: 1,
+    });
+
+    await expect(
+      store.getState().askRepairAssistant("Which tool do I need?", humanActionOptions(store)),
+    ).resolves.toEqual({ ok: true });
+
+    expect(assistant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeStepIndex: 1,
+        messages: [{ role: "user", content: "Which tool do I need?" }],
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(store.getState().assistantMessages).toEqual([
+      { role: "user", content: "Which tool do I need?" },
+      { role: "assistant", content: "Use the matching hand tool shown in step 2." },
+    ]);
+    expect(store.getState().assistantChatStatus).toBe("idle");
   });
 
   it("explodes and reassembles a generated model through the same reversible action", async () => {

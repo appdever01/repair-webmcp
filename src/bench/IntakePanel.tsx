@@ -6,13 +6,7 @@ import {
   validateImageFile,
   workspaceStore,
 } from "../workspace";
-import {
-  AgentGuide,
-  AgentSection,
-  HowItWorks,
-  ObjectShowcase,
-  SiteFooter,
-} from "./LandingSections";
+import { AgentSection, HowItWorks, ObjectShowcase, SiteFooter } from "./LandingSections";
 
 const sampleObjects = [
   {
@@ -93,12 +87,19 @@ export function IntakePanel() {
   return (
     <div className="intake-page">
       <section className="intake-hero" aria-labelledby="intake-title">
+        <a className="hero-wordmark" href="#main-content" aria-label="RE:PAIR home">
+          <img src="/repair-logo.png" alt="" width="32" height="32" />
+          <span className="wordmark-text">
+            RE<span aria-hidden="true">:</span>PAIR
+          </span>
+        </a>
         <div className="intake-copy">
           <p className="hero-kicker">
             <span aria-hidden="true" /> Visual repair intelligence
           </p>
           <h1 id="intake-title">
-            One photo. <span>A clearer fix.</span>
+            <span className="hero-title-plain">One photo.</span>{" "}
+            <span className="hero-title-block">A clearer fix.</span>
           </h1>
           <p className="hero-copy">
             Turn one photo into a clear, careful next step. Understand what failed, what to check,
@@ -164,8 +165,7 @@ export function IntakePanel() {
             </button>
             {state.uploaderPromptVisible && (
               <p className="agent-prompt-note">
-                <RepairIcon name="agent" /> A browser agent opened this area. Drop, paste, or choose
-                the image yourself.
+                <RepairIcon name="agent" /> Assistance opened this area. Choose the image yourself.
               </p>
             )}
             {selectionError && (
@@ -259,7 +259,6 @@ export function IntakePanel() {
       <HowItWorks />
       <ObjectShowcase />
       <AgentSection />
-      <AgentGuide />
       <SiteFooter />
     </div>
   );

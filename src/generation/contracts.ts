@@ -365,7 +365,59 @@ export const draftRepairPlanBodySchema = draftRepairPlanRequestSchema.omit({ ses
 export const draftRepairPlanResponseSchema = z
   .object({
     plan: repairPlanSchema,
+    planToken: z.string().min(32).max(4_096),
   })
+  .strict();
+
+export const repairStepVisualSchema = z
+  .object({
+    stepIndex: z.number().int().min(0).max(4),
+    image: diagnosticImageSchema,
+  })
+  .strict();
+
+export const generateRepairStepVisualRequestSchema = z
+  .object({
+    sessionToken: z.string().min(32).max(4_096),
+    planToken: z.string().min(32).max(4_096),
+    image: compressedImageSchema,
+    analysis: objectAnalysisSchema,
+    plan: repairPlanSchema,
+    stepIndex: z.number().int().min(0).max(4),
+  })
+  .strict();
+
+export const generateRepairStepVisualBodySchema = generateRepairStepVisualRequestSchema.omit({
+  sessionToken: true,
+});
+
+export const generateRepairStepVisualResponseSchema = repairStepVisualSchema;
+
+export const repairAssistantMessageSchema = z
+  .object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().trim().min(1).max(1_200),
+  })
+  .strict();
+
+export const askRepairAssistantRequestSchema = z
+  .object({
+    sessionToken: z.string().min(32).max(4_096),
+    planToken: z.string().min(32).max(4_096),
+    image: compressedImageSchema,
+    analysis: objectAnalysisSchema,
+    plan: repairPlanSchema,
+    activeStepIndex: z.number().int().min(0).max(4),
+    messages: z.array(repairAssistantMessageSchema).min(1).max(24),
+  })
+  .strict();
+
+export const askRepairAssistantBodySchema = askRepairAssistantRequestSchema.omit({
+  sessionToken: true,
+});
+
+export const askRepairAssistantResponseSchema = z
+  .object({ answer: z.string().trim().min(1).max(2_400) })
   .strict();
 
 export const apiErrorResponseSchema = z
@@ -417,4 +469,14 @@ export type RepairPlan = z.infer<typeof repairPlanSchema>;
 export type DraftRepairPlanRequest = z.infer<typeof draftRepairPlanRequestSchema>;
 export type DraftRepairPlanBody = z.infer<typeof draftRepairPlanBodySchema>;
 export type DraftRepairPlanResponse = z.infer<typeof draftRepairPlanResponseSchema>;
+export type RepairStepVisual = z.infer<typeof repairStepVisualSchema>;
+export type GenerateRepairStepVisualRequest = z.infer<typeof generateRepairStepVisualRequestSchema>;
+export type GenerateRepairStepVisualBody = z.infer<typeof generateRepairStepVisualBodySchema>;
+export type GenerateRepairStepVisualResponse = z.infer<
+  typeof generateRepairStepVisualResponseSchema
+>;
+export type RepairAssistantMessage = z.infer<typeof repairAssistantMessageSchema>;
+export type AskRepairAssistantRequest = z.infer<typeof askRepairAssistantRequestSchema>;
+export type AskRepairAssistantBody = z.infer<typeof askRepairAssistantBodySchema>;
+export type AskRepairAssistantResponse = z.infer<typeof askRepairAssistantResponseSchema>;
 export type ApiErrorResponse = z.infer<typeof apiErrorResponseSchema>;

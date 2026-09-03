@@ -9,6 +9,7 @@ import {
 } from "../components/ui/select";
 import { RepairIcon } from "../design/RepairIcon";
 import type { ObservationKind } from "../generation/contracts";
+import { repairGuideSteps } from "../generation/repairGuide";
 import {
   humanActionOptions,
   selectActiveQuestion,
@@ -54,18 +55,17 @@ function QuestionForm() {
 
   return (
     <form className="question-form" onSubmit={submit} id={`human-${question.id}`}>
-      <div className="interview-heading">
-        <p className="eyebrow">AI visual interview</p>
+      <div className="repair-check-heading">
+        <p className="eyebrow">One quick check</p>
         <span>
-          <RepairIcon name="agent" size={15} /> Question {answers.length + 1} · adapts to every
-          answer
+          <RepairIcon name="inspect" size={15} /> Detail {answers.length + 1} for the repair guide
         </span>
       </div>
       <h2>{question.prompt}</h2>
       <div className="question-why">
         <RepairIcon name="inspect" size={18} />
         <p>
-          <strong>Why I’m asking</strong>
+          <strong>Why it matters</strong>
           {question.why}
         </p>
       </div>
@@ -78,10 +78,10 @@ function QuestionForm() {
         ))}
       </fieldset>
       <div className="answer-divider">
-        <span>or describe it yourself</span>
+        <span>or add a short note</span>
       </div>
       <div className="question-field">
-        <span id="observation-type-label">Observation type</span>
+        <span id="observation-type-label">Kind of detail</span>
         <Select value={kind} onValueChange={(value) => setKind(value as ObservationKind)}>
           <SelectTrigger aria-labelledby="observation-type-label">
             <SelectValue />
@@ -96,7 +96,7 @@ function QuestionForm() {
         </Select>
       </div>
       <label>
-        <span>What do you observe?</span>
+        <span>What do you notice?</span>
         <textarea
           ref={textareaRef}
           rows={4}
@@ -107,7 +107,7 @@ function QuestionForm() {
         />
       </label>
       <button type="submit" className="primary-button" disabled={!description.trim()}>
-        <RepairIcon name="forward" /> Send answer to AI
+        <RepairIcon name="forward" /> Use this detail
       </button>
       <button
         type="button"
@@ -121,9 +121,7 @@ function QuestionForm() {
       >
         I can’t tell safely
       </button>
-      <p className="authority-note">
-        Quick replies are suggestions, not conclusions. Choose only what is true for your object.
-      </p>
+      <p className="authority-note">Choose only what matches your object.</p>
     </form>
   );
 }
@@ -137,15 +135,14 @@ function QuestionThinking() {
         <RepairIcon name="agent" size={26} />
         <span className="thinking-orbit-ring" />
       </div>
-      <p className="eyebrow">AI visual interview</p>
-      <h2>{latest ? "Adapting to your answer…" : "Looking for the best first question…"}</h2>
+      <p className="eyebrow">Checking the photo</p>
+      <h2>{latest ? "Updating the fix…" : "Making sure the first step is safe…"}</h2>
       {latest && (
         <blockquote>
-          <small>You answered</small>
+          <small>Your detail</small>
           {latest.observation.description}
         </blockquote>
       )}
-      <p>Comparing your observation with the uploaded image and visible damage.</p>
       <div className="indeterminate-progress" aria-hidden="true">
         <span />
       </div>
@@ -158,8 +155,8 @@ function QuestionFailure() {
   return (
     <div className="question-failure">
       <RepairIcon name="warning" size={28} />
-      <p className="eyebrow">Interview paused</p>
-      <h2>I couldn’t choose the next question.</h2>
+      <p className="eyebrow">Photo check paused</p>
+      <h2>The quick check didn’t finish.</h2>
       <p className="inline-error" role="alert">
         {error}
       </p>
@@ -183,30 +180,31 @@ function QuestionFailure() {
   );
 }
 
-function InterviewReady() {
+function ReadyToFix() {
   const state = useWorkspaceStore((current) => current);
   return (
-    <div className="interview-ready">
+    <div className="repair-ready">
       <span className="ready-check">
         <RepairIcon name="check" size={25} />
       </span>
-      <p className="eyebrow">Interview complete</p>
-      <h2>I have enough context.</h2>
-      <p>
-        {state.questionMessage ??
-          `${state.answers.length} observations are ready to combine with the image evidence.`}
-      </p>
-      <details className="interview-history">
-        <summary>{state.answers.length} human observations collected</summary>
-        <ol>
-          {state.answers.map((answer) => (
-            <li key={answer.questionId}>
-              <small>{answer.question}</small>
-              <span>{answer.observation.description}</span>
-            </li>
-          ))}
-        </ol>
-      </details>
+      <p className="eyebrow">Ready</p>
+      <h2>Let’s fix it step by step.</h2>
+      <p>OpenAI will turn the repair into a short illustrated guide.</p>
+      {state.answers.length > 0 && (
+        <details className="repair-details-history">
+          <summary>
+            {state.answers.length} {state.answers.length === 1 ? "detail" : "details"} you added
+          </summary>
+          <ol>
+            {state.answers.map((answer) => (
+              <li key={answer.questionId}>
+                <small>{answer.question}</small>
+                <span>{answer.observation.description}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
       {state.operationError && (
         <p className="inline-error" role="alert">
           {state.operationError}
@@ -220,7 +218,7 @@ function InterviewReady() {
           void workspaceStore.getState().draftRepairPlan(humanActionOptions(workspaceStore))
         }
       >
-        <RepairIcon name="repair" /> Build my guidance
+        <RepairIcon name="repair" /> Let’s start fixing
       </button>
     </div>
   );
@@ -250,81 +248,161 @@ function SafetyStop() {
   );
 }
 
-function PlanView() {
+function GuideReadyPanel() {
   const plan = useWorkspaceStore((state) => state.plan);
+  const steps = plan ? repairGuideSteps(plan) : [];
+
+  return (
+    <div className="guide-ready-panel">
+      <span className="ready-check">
+        <RepairIcon name="repair" size={25} />
+      </span>
+      <p className="eyebrow">Visual guide ready</p>
+      <h2>{steps.length} illustrated steps.</h2>
+      <p>Each step shows exactly what to handle and where.</p>
+      <button
+        type="button"
+        className="primary-button"
+        onClick={() => workspaceStore.getState().setGuidePageOpen(true)}
+      >
+        <RepairIcon name="forward" /> Open repair guide
+      </button>
+    </div>
+  );
+}
+
+function PlanView() {
+  const state = useWorkspaceStore((current) => current);
+  const plan = state.plan;
   if (!plan) return null;
-  const nextStep = plan.safeNextChecks[0] ?? plan.proposedRepairPlan[0] ?? null;
+  const steps = repairGuideSteps(plan);
+  const activeIndex = Math.min(state.activeRepairStepIndex, Math.max(steps.length - 1, 0));
+  const current = steps[activeIndex];
+  const visual = state.repairStepVisuals[activeIndex];
+  const [actionWord, ...titleWords] = current?.step.title.trim().split(/\s+/) ?? [];
+  const titleRemainder = titleWords.join(" ");
+  const setStep = (index: number) => workspaceStore.getState().setActiveRepairStep(index);
+
   return (
     <div className="plan-view" id="repair-plan">
-      <p className="eyebrow">Cautious guidance</p>
-      <h2>
-        {plan.professionalHelp.required ? "Ask a qualified professional." : "Your next safe action"}
-      </h2>
-      <div className="stop-conditions">
-        <strong>Stop before starting if</strong>
-        <ul>
-          {plan.stopConditions.map((condition) => (
-            <li key={condition}>{condition}</li>
-          ))}
-        </ul>
-      </div>
+      <p className="eyebrow">
+        {plan.professionalHelp.required
+          ? "Stop here"
+          : `Step ${activeIndex + 1} of ${steps.length}`}
+      </p>
       {plan.professionalHelp.required ? (
-        <p>{plan.professionalHelp.reason}</p>
-      ) : nextStep ? (
-        <div className="next-step">
-          <span>1</span>
-          <div>
-            <h3>{nextStep.title}</h3>
-            <p>{nextStep.instructions}</p>
-            {nextStep.caution && (
+        <>
+          <h2>Ask a qualified professional.</h2>
+          <p>{plan.professionalHelp.reason}</p>
+        </>
+      ) : current ? (
+        <>
+          <h2 className="repair-step-title">
+            {actionWord && <mark>{actionWord}</mark>}
+            {titleRemainder && (
+              <>
+                {" "}
+                <span>{titleRemainder}</span>
+              </>
+            )}
+          </h2>
+          <div className="guide-status" data-status={visual?.status ?? "idle"}>
+            <span aria-hidden="true" />
+            {visual?.status === "succeeded"
+              ? "Visual ready"
+              : visual?.status === "failed"
+                ? "Photo fallback"
+                : "Drawing visual"}
+          </div>
+          <div className="current-repair-step">
+            <p className="step-instruction">
+              <span>{current.step.instructions}</span>
+            </p>
+            {current.step.caution && (
               <p className="step-caution">
                 <RepairIcon name="warning" />
-                {nextStep.caution}
+                {current.step.caution}
               </p>
             )}
           </div>
-        </div>
+          <div className="repair-step-actions">
+            {activeIndex > 0 && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setStep(activeIndex - 1)}
+              >
+                <RepairIcon name="back" /> Back
+              </button>
+            )}
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => setStep(activeIndex === steps.length - 1 ? 0 : activeIndex + 1)}
+            >
+              {activeIndex === steps.length - 1 ? "Review from start" : "Show next step"}
+              <RepairIcon name={activeIndex === steps.length - 1 ? "reset" : "forward"} />
+            </button>
+          </div>
+        </>
       ) : (
-        <p>No physical action is supported by the available evidence.</p>
+        <>
+          <h2>No physical action yet.</h2>
+          <p>The available evidence does not support a repair step.</p>
+        </>
       )}
-      <details className="hypothesis-details">
-        <summary>Review hypotheses and uncertainty</summary>
-        {plan.hypotheses.map((hypothesis) => (
-          <article key={hypothesis.cause}>
-            <h3>{hypothesis.cause}</h3>
-            <span>{hypothesis.confidence} confidence</span>
-            <strong>Evidence for</strong>
+      {plan.stopConditions[0] && (
+        <div className="safety-gate">
+          <RepairIcon name="warning" />
+          <div>
+            <small>Stop if</small>
+            <strong>{plan.stopConditions[0]}</strong>
+          </div>
+        </div>
+      )}
+      <details className="hypothesis-details compact-plan-details">
+        <summary>Safety and evidence</summary>
+        {plan.stopConditions.length > 1 && (
+          <>
+            <strong>Also stop if</strong>
             <ul>
-              {hypothesis.evidenceFor.map((item) => (
+              {plan.stopConditions.slice(1).map((condition) => (
+                <li key={condition}>{condition}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        {plan.unknowns.length > 0 && (
+          <>
+            <strong>Still unknown</strong>
+            <ul>
+              {plan.unknowns.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
-            <strong>Evidence against</strong>
-            {hypothesis.evidenceAgainst.length > 0 ? (
-              <ul>
-                {hypothesis.evidenceAgainst.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>None recorded.</p>
-            )}
-          </article>
-        ))}
-        <strong>Unknowns</strong>
-        {plan.unknowns.length > 0 ? (
-          <ul>
-            {plan.unknowns.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        ) : (
-          <p>No additional unknowns were listed.</p>
+          </>
+        )}
+        {plan.hypotheses.length > 0 && (
+          <>
+            <strong>Likely causes</strong>
+            <ul>
+              {plan.hypotheses.map((hypothesis) => (
+                <li key={hypothesis.cause}>{hypothesis.cause}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        {plan.toolsAndMaterials.length > 0 && (
+          <>
+            <strong>You may need</strong>
+            <ul>
+              {plan.toolsAndMaterials.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </>
         )}
       </details>
-      <p className="authority-note">
-        Only a person can perform, approve, or confirm physical work.
-      </p>
     </div>
   );
 }
@@ -341,7 +419,13 @@ export function RepairGuidance() {
   if (state.plan)
     return (
       <aside className="guidance-panel">
-        <PlanView />
+        {state.guidePageOpen ||
+        state.visualMode === "guide" ||
+        state.plan.professionalHelp.required ? (
+          <PlanView />
+        ) : (
+          <GuideReadyPanel />
+        )}
       </aside>
     );
   if (state.questionStatus === "loading")
@@ -367,7 +451,9 @@ export function RepairGuidance() {
       <aside className="guidance-panel busy-guidance">
         <span className="progress-pulse" aria-hidden="true" />
         <p className="eyebrow">In progress</p>
-        <h2>{state.stage === "planning" ? "Preparing guidance" : "Building your workspace"}</h2>
+        <h2>
+          {state.stage === "planning" ? "Creating your visual guide" : "Preparing the repair"}
+        </h2>
         <p>{state.generationMessage ?? "The current request is still running."}</p>
       </aside>
     );
@@ -375,14 +461,14 @@ export function RepairGuidance() {
   if (state.questionStatus === "complete")
     return (
       <aside className="guidance-panel">
-        <InterviewReady />
+        <ReadyToFix />
       </aside>
     );
   return (
     <aside className="guidance-panel">
-      <p className="eyebrow">AI visual interview</p>
-      <h2>Let’s ask a useful question.</h2>
-      <p>The next question will be chosen from the uploaded image and will adapt to each answer.</p>
+      <p className="eyebrow">Before we start</p>
+      <h2>One quick photo check.</h2>
+      <p>A small visible detail may make the repair steps clearer.</p>
       <button
         type="button"
         className="primary-button"
@@ -390,7 +476,7 @@ export function RepairGuidance() {
           void workspaceStore.getState().loadNextQuestion(humanActionOptions(workspaceStore))
         }
       >
-        <RepairIcon name="agent" /> Start AI interview
+        <RepairIcon name="inspect" /> Check the photo
       </button>
     </aside>
   );

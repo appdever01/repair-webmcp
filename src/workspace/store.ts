@@ -5,7 +5,13 @@ import type {
   GetModelGenerationResponse,
   HumanObservation,
 } from "../generation/contracts";
+import { repairGuideSteps } from "../generation/repairGuide";
 import { validateImageFile } from "./image";
+import {
+  browserWorkspacePersistence,
+  type PersistedWorkspaceRecord,
+  type WorkspacePersistence,
+} from "./persistence";
 import { defaultWorkspaceServices, type WorkspaceServices } from "./services";
 import type {
   QuestionAnswer,
@@ -22,15 +28,24 @@ export interface WorkspaceActionOptions {
 }
 
 export interface WorkspaceActions {
+  hydrateWorkspace(): Promise<void>;
   selectImage(file: File): string | null;
   removeImage(): void;
   setProblemDescription(value: string): void;
   setObjectNameCorrection(value: string): void;
   setVisualMode(mode: WorkspaceVisualMode): void;
+  setGuidePageOpen(open: boolean): void;
+  setActiveRepairStep(index: number): void;
   setModelError(message: string): void;
   setActivityOpen(open: boolean): void;
+  askRepairAssistant(
+    question: string,
+    options: WorkspaceActionOptions,
+  ): Promise<WorkspaceActionResult>;
+  clearAssistantChat(): void;
   answerQuestion(questionId: string, observation: HumanObservation): void;
   generateDiagnosticView(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
+  generateRepairStepVisuals(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   loadNextQuestion(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   finishQuestioning(): void;
   openImageUploader(options: WorkspaceActionOptions): WorkspaceActionResult;
@@ -54,6 +69,7 @@ export type WorkspaceStoreState = WorkspaceState & WorkspaceActions;
 export type WorkspaceStore = ReturnType<typeof createWorkspaceStore>;
 
 const initialState: WorkspaceState = {
+  hasHydrated: true,
   stage: "intake",
   stateVersion: 0,
   image: null,
@@ -73,7 +89,8 @@ const initialState: WorkspaceState = {
   jobId: null,
   model: null,
   modelError: null,
-  visualMode: "photo",
+  visualMode: "diagnostic",
+  guidePageOpen: false,
   exploded: false,
   focusedHotspotId: null,
   activeQuestionId: null,
@@ -83,11 +100,17 @@ const initialState: WorkspaceState = {
   questionError: null,
   answers: [],
   plan: null,
+  planToken: null,
+  repairStepVisuals: [],
+  activeRepairStepIndex: 0,
   operationError: null,
   isBusy: false,
   uploaderFocusRequest: 0,
   uploaderPromptVisible: false,
   activityOpen: false,
+  assistantMessages: [],
+  assistantChatStatus: "idle",
+  assistantChatError: null,
   announcement: "",
   reversibleActivity: null,
 };
@@ -113,6 +136,14 @@ function isCancelled(error: unknown): boolean {
   );
 }
 
+function isSessionExpired(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    "code" in error &&
+    (error as Error & { code?: unknown }).code === "SESSION_EXPIRED"
+  );
+}
+
 function publicError(error: unknown): string {
   if (isCancelled(error)) return "The current task was cancelled.";
   if (error instanceof Error && error.message.trim()) return error.message;
@@ -123,13 +154,110 @@ function failure(message: string, recoverable = true): GenerationError {
   return { code: "MODEL_GENERATION_FAILED", message, recoverable };
 }
 
-export function createWorkspaceStore(services: WorkspaceServices = defaultWorkspaceServices) {
+function workspaceStateSnapshot(state: WorkspaceStoreState): WorkspaceState {
+  return Object.fromEntries(
+    (Object.keys(initialState) as Array<keyof WorkspaceState>).map((key) => [key, state[key]]),
+  ) as unknown as WorkspaceState;
+}
+
+function persistedWorkspaceRecord(state: WorkspaceStoreState): PersistedWorkspaceRecord {
+  const snapshot = workspaceStateSnapshot(state);
+  const { hasHydrated: _hasHydrated, image, isBusy: _isBusy, ...rest } = snapshot;
+  return {
+    version: 1,
+    state: {
+      ...rest,
+      image: image ? { name: image.name, width: image.width, height: image.height } : null,
+      isBusy: false,
+    },
+  };
+}
+
+function restoredWorkspaceState(record: PersistedWorkspaceRecord): WorkspaceState {
+  const saved = record.state;
+  const originalFile =
+    typeof File !== "undefined" && saved.originalFile instanceof File ? saved.originalFile : null;
+  const previewUrl = originalFile
+    ? createPreviewUrl(originalFile)
+    : saved.compressedImage
+      ? `data:${saved.compressedImage.mediaType};base64,${saved.compressedImage.base64}`
+      : null;
+  const interruptedModel = ["queued", "processing"].includes(saved.generationStatus);
+  const interruptedStage = [
+    "uploading",
+    "understanding",
+    "preparing",
+    "generating",
+    "finishing",
+    "planning",
+  ].includes(saved.stage);
+  const stage = interruptedStage
+    ? saved.plan
+      ? "guidance"
+      : saved.analysis?.safety.riskLevel === "professional_help_only"
+        ? "safety-stop"
+        : saved.analysis
+          ? "analysis"
+          : saved.image
+            ? "image-ready"
+            : "intake"
+    : saved.stage;
+
+  return {
+    ...initialState,
+    ...saved,
+    hasHydrated: true,
+    stage,
+    image:
+      saved.image && previewUrl
+        ? {
+            ...saved.image,
+            previewUrl,
+          }
+        : null,
+    originalFile,
+    diagnosticStatus: saved.diagnosticStatus === "generating" ? "idle" : saved.diagnosticStatus,
+    generationStatus: interruptedModel ? "failed" : saved.generationStatus,
+    generationProgress: interruptedModel ? null : saved.generationProgress,
+    generationMessage: interruptedModel
+      ? "3D generation was interrupted by the refresh."
+      : saved.generationMessage,
+    generationError: interruptedModel
+      ? failure("3D generation was interrupted by the refresh. You can retry it.")
+      : saved.generationError,
+    questionStatus: saved.questionStatus === "loading" ? "idle" : saved.questionStatus,
+    guidePageOpen: saved.guidePageOpen || (saved.visualMode === "guide" && Boolean(saved.plan)),
+    assistantChatStatus:
+      saved.assistantChatStatus === "sending" ? "failed" : saved.assistantChatStatus,
+    assistantChatError:
+      saved.assistantChatStatus === "sending"
+        ? "The previous message was interrupted by the refresh."
+        : saved.assistantChatError,
+    repairStepVisuals: saved.repairStepVisuals.map((visual) =>
+      visual.status === "generating" ? { ...visual, status: "idle" } : visual,
+    ),
+    isBusy: false,
+    announcement: saved.analysis ? "Your repair workspace was restored." : saved.announcement,
+  };
+}
+
+export function createWorkspaceStore(
+  services: WorkspaceServices = defaultWorkspaceServices,
+  persistence: WorkspacePersistence = browserWorkspacePersistence,
+) {
+  const storeInitialState = { ...initialState, hasHydrated: !persistence.available };
+  let persistenceReady = !persistence.available;
+  let persistenceQueue = Promise.resolve();
   let currentTaskController: AbortController | null = null;
   let currentTaskSequence = 0;
   let diagnosticTaskController: AbortController | null = null;
   let diagnosticTaskSequence = 0;
+  let repairVisualTaskController: AbortController | null = null;
+  let repairVisualTaskSequence = 0;
   let questionTaskController: AbortController | null = null;
   let questionTaskSequence = 0;
+  let assistantTaskController: AbortController | null = null;
+  let assistantTaskSequence = 0;
   let reversibleSequence = 0;
   let reversiblePatch: Partial<WorkspaceState> | null = null;
 
@@ -185,6 +313,25 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
     const isCurrentDiagnosticTask = (sequence: number) =>
       diagnosticTaskSequence === sequence && diagnosticTaskController !== null;
 
+    const beginRepairVisualTask = (externalSignal?: AbortSignal) => {
+      repairVisualTaskController?.abort();
+      const controller = new AbortController();
+      repairVisualTaskController = controller;
+      repairVisualTaskSequence += 1;
+      const sequence = repairVisualTaskSequence;
+      const abort = () => controller.abort(externalSignal?.reason);
+      if (externalSignal?.aborted) abort();
+      else externalSignal?.addEventListener("abort", abort, { once: true });
+      return {
+        controller,
+        sequence,
+        release: () => externalSignal?.removeEventListener("abort", abort),
+      };
+    };
+
+    const isCurrentRepairVisualTask = (sequence: number) =>
+      repairVisualTaskSequence === sequence && repairVisualTaskController !== null;
+
     const beginQuestionTask = (externalSignal?: AbortSignal) => {
       questionTaskController?.abort();
       const controller = new AbortController();
@@ -203,6 +350,25 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
 
     const isCurrentQuestionTask = (sequence: number) =>
       questionTaskSequence === sequence && questionTaskController !== null;
+
+    const beginAssistantTask = (externalSignal?: AbortSignal) => {
+      assistantTaskController?.abort();
+      const controller = new AbortController();
+      assistantTaskController = controller;
+      assistantTaskSequence += 1;
+      const sequence = assistantTaskSequence;
+      const abort = () => controller.abort(externalSignal?.reason);
+      if (externalSignal?.aborted) abort();
+      else externalSignal?.addEventListener("abort", abort, { once: true });
+      return {
+        controller,
+        sequence,
+        release: () => externalSignal?.removeEventListener("abort", abort),
+      };
+    };
+
+    const isCurrentAssistantTask = (sequence: number) =>
+      assistantTaskSequence === sequence && assistantTaskController !== null;
 
     const applyGeneration = (response: GetModelGenerationResponse) => {
       if (response.status === "succeeded") {
@@ -317,7 +483,59 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
     };
 
     return {
-      ...initialState,
+      ...storeInitialState,
+      async hydrateWorkspace() {
+        if (get().hasHydrated) return;
+        const record = await persistence.load();
+        if (record) {
+          try {
+            revokePreviewUrl(get().image?.previewUrl);
+            set(restoredWorkspaceState(record));
+          } catch {
+            await persistence.clear();
+            set({ hasHydrated: true });
+          }
+        } else {
+          set({ hasHydrated: true });
+        }
+        persistenceReady = true;
+        const restored = get();
+        if (
+          restored.analysis &&
+          restored.sessionToken &&
+          restored.compressedImage &&
+          restored.diagnosticStatus === "idle"
+        ) {
+          void restored.generateDiagnosticView({
+            expectedStateVersion: restored.stateVersion,
+            source: "human",
+          });
+          return;
+        }
+        if (
+          restored.analysis &&
+          restored.sessionToken &&
+          restored.compressedImage &&
+          restored.diagnosticStatus === "succeeded" &&
+          restored.questionStatus === "idle" &&
+          !restored.plan
+        ) {
+          void restored.loadNextQuestion({
+            expectedStateVersion: restored.stateVersion,
+            source: "human",
+          });
+        }
+        if (
+          restored.plan &&
+          restored.planToken &&
+          restored.repairStepVisuals.some((visual) => visual.status === "idle")
+        ) {
+          void restored.generateRepairStepVisuals({
+            expectedStateVersion: get().stateVersion,
+            source: "human",
+          });
+        }
+      },
       selectImage(file) {
         const validationError = validateImageFile(file);
         if (validationError) {
@@ -329,8 +547,12 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         currentTaskController = null;
         diagnosticTaskController?.abort();
         diagnosticTaskController = null;
+        repairVisualTaskController?.abort();
+        repairVisualTaskController = null;
         questionTaskController?.abort();
         questionTaskController = null;
+        assistantTaskController?.abort();
+        assistantTaskController = null;
         const previousUrl = get().image?.previewUrl;
         const previewUrl = createPreviewUrl(file);
         revokePreviewUrl(previousUrl);
@@ -351,8 +573,12 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         currentTaskController = null;
         diagnosticTaskController?.abort();
         diagnosticTaskController = null;
+        repairVisualTaskController?.abort();
+        repairVisualTaskController = null;
         questionTaskController?.abort();
         questionTaskController = null;
+        assistantTaskController?.abort();
+        assistantTaskController = null;
         revokePreviewUrl(get().image?.previewUrl);
         reversiblePatch = null;
         commit({
@@ -379,20 +605,122 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
               ? "3D workspace shown."
               : mode === "diagnostic"
                 ? "Diagnostic damage map shown."
-                : "Original photo shown.",
+                : "Step-by-step repair visual shown.",
+        });
+      },
+      setGuidePageOpen(open) {
+        commit({
+          guidePageOpen: open,
+          visualMode: open ? "guide" : get().visualMode,
+          announcement: open ? "Step-by-step repair guide opened." : "Repair findings shown.",
+        });
+      },
+      setActiveRepairStep(index) {
+        const state = get();
+        const steps = state.plan ? repairGuideSteps(state.plan) : [];
+        if (!steps[index]) return;
+        commit({
+          activeRepairStepIndex: index,
+          visualMode: "guide",
+          announcement: `Repair step ${index + 1} of ${steps.length} shown.`,
         });
       },
       setModelError(message) {
         commit({
           modelError: message,
-          visualMode: "photo",
+          visualMode: "diagnostic",
           exploded: false,
-          announcement:
-            "The 3D model could not be displayed. The interactive photo is still available.",
+          announcement: "The 3D model could not be displayed. The damage map is still available.",
         });
       },
       setActivityOpen(open) {
         set({ activityOpen: open });
+      },
+      async askRepairAssistant(question, options) {
+        const state = get();
+        const content = question.trim();
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        if (
+          !content ||
+          content.length > 1_200 ||
+          state.assistantChatStatus === "sending" ||
+          !state.analysis ||
+          !state.sessionToken ||
+          !state.plan ||
+          !state.planToken ||
+          !state.compressedImage
+        ) {
+          return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        }
+        const task = beginAssistantTask(options.signal);
+        const messages = [
+          ...state.assistantMessages.slice(-22),
+          { role: "user" as const, content },
+        ];
+        commit({
+          assistantMessages: messages,
+          assistantChatStatus: "sending",
+          assistantChatError: null,
+          activityOpen: true,
+          announcement: "The repair assistant is answering your question.",
+        });
+        try {
+          const response = await services.askRepairAssistant(
+            {
+              sessionToken: state.sessionToken,
+              planToken: state.planToken,
+              image: state.compressedImage,
+              analysis: state.analysis,
+              plan: state.plan,
+              activeStepIndex: state.activeRepairStepIndex,
+              messages,
+            },
+            task.controller.signal,
+          );
+          if (!isCurrentAssistantTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          assistantTaskController = null;
+          commit({
+            assistantMessages: [
+              ...get().assistantMessages,
+              { role: "assistant", content: response.answer },
+            ],
+            assistantChatStatus: "idle",
+            assistantChatError: null,
+            announcement: "The repair assistant answered your question.",
+          });
+          return { ok: true };
+        } catch (error) {
+          if (!isCurrentAssistantTask(task.sequence)) {
+            return { ok: false, code: "CANCELLED" };
+          }
+          assistantTaskController = null;
+          const cancelled = isCancelled(error) || task.controller.signal.aborted;
+          commit({
+            assistantChatStatus: cancelled ? "idle" : "failed",
+            assistantChatError: cancelled ? null : publicError(error),
+            announcement: cancelled
+              ? "The assistant response was cancelled."
+              : "The repair assistant could not answer. You can try again.",
+          });
+          return cancelled
+            ? { ok: false, code: "CANCELLED" }
+            : { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        } finally {
+          task.release();
+        }
+      },
+      clearAssistantChat() {
+        assistantTaskController?.abort();
+        assistantTaskController = null;
+        assistantTaskSequence += 1;
+        commit({
+          assistantMessages: [],
+          assistantChatStatus: "idle",
+          assistantChatError: null,
+          announcement: "Assistant conversation cleared.",
+        });
       },
       answerQuestion(id, observation) {
         const state = get();
@@ -408,7 +736,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           activeQuestionId: null,
           questionStatus: "idle",
           questionMessage: null,
-          announcement: "Observation recorded. AI is deciding what to ask next.",
+          announcement: "Detail added. Updating the repair guide.",
         });
         const next = get();
         void next.loadNextQuestion({
@@ -432,7 +760,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           diagnosticStatus: "generating",
           diagnosticError: null,
           visualMode: "diagnostic",
-          announcement: "OpenAI is creating a diagnostic damage map.",
+          announcement: "AI is creating a diagnostic damage map.",
         });
         try {
           const response = await services.generateDiagnosticView(
@@ -453,6 +781,16 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             diagnosticError: null,
             announcement: "The diagnostic damage map is ready. Verify it against the photo.",
           });
+          const next = get();
+          if (
+            next.analysis?.safety.riskLevel !== "professional_help_only" &&
+            next.questionStatus === "idle"
+          ) {
+            void next.loadNextQuestion({
+              expectedStateVersion: next.stateVersion,
+              source: options.source,
+            });
+          }
           return { ok: true };
         } catch (error) {
           if (!isCurrentDiagnosticTask(task.sequence)) {
@@ -474,6 +812,98 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           task.release();
         }
       },
+      async generateRepairStepVisuals(options) {
+        const state = get();
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        if (
+          !state.analysis ||
+          !state.sessionToken ||
+          !state.plan ||
+          !state.planToken ||
+          !state.compressedImage ||
+          state.plan.professionalHelp.required ||
+          state.repairStepVisuals.some((visual) => visual.status === "generating")
+        ) {
+          return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        }
+        const steps = repairGuideSteps(state.plan);
+        if (steps.length === 0) return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        const task = beginRepairVisualTask(options.signal);
+        const startingVisuals = steps.map(
+          (_, index) =>
+            state.repairStepVisuals[index] ?? {
+              status: "idle" as const,
+              image: null,
+              error: null,
+            },
+        );
+        commit({
+          repairStepVisuals: startingVisuals,
+          visualMode: "guide",
+          announcement: `Creating ${steps.length} step-by-step repair visuals.`,
+        });
+        let completed = startingVisuals.filter((visual) => visual.status === "succeeded").length;
+        try {
+          for (let index = 0; index < steps.length; index += 1) {
+            if (!isCurrentRepairVisualTask(task.sequence)) {
+              return { ok: false, code: "CANCELLED" };
+            }
+            if (get().repairStepVisuals[index]?.status === "succeeded") continue;
+            commit({
+              repairStepVisuals: get().repairStepVisuals.map((visual, visualIndex) =>
+                visualIndex === index ? { status: "generating", image: null, error: null } : visual,
+              ),
+              announcement: `Creating repair visual ${index + 1} of ${steps.length}.`,
+            });
+            try {
+              const response = await services.generateRepairStepVisual(
+                {
+                  sessionToken: state.sessionToken,
+                  planToken: state.planToken,
+                  image: state.compressedImage,
+                  analysis: state.analysis,
+                  plan: state.plan,
+                  stepIndex: index,
+                },
+                task.controller.signal,
+              );
+              if (!isCurrentRepairVisualTask(task.sequence)) {
+                return { ok: false, code: "CANCELLED" };
+              }
+              completed += 1;
+              commit({
+                repairStepVisuals: get().repairStepVisuals.map((visual, visualIndex) =>
+                  visualIndex === index
+                    ? { status: "succeeded", image: response.image, error: null }
+                    : visual,
+                ),
+              });
+            } catch (error) {
+              if (!isCurrentRepairVisualTask(task.sequence) || task.controller.signal.aborted) {
+                return { ok: false, code: "CANCELLED" };
+              }
+              commit({
+                repairStepVisuals: get().repairStepVisuals.map((visual, visualIndex) =>
+                  visualIndex === index
+                    ? { status: "failed", image: null, error: publicError(error) }
+                    : visual,
+                ),
+              });
+            }
+          }
+          repairVisualTaskController = null;
+          commit({
+            announcement:
+              completed === steps.length
+                ? "All step-by-step repair visuals are ready."
+                : `${completed} of ${steps.length} repair visuals are ready.`,
+          });
+          return completed > 0 ? { ok: true } : { ok: false, code: "ACTION_NOT_AVAILABLE" };
+        } finally {
+          if (isCurrentRepairVisualTask(task.sequence)) repairVisualTaskController = null;
+          task.release();
+        }
+      },
       async loadNextQuestion(options) {
         const state = get();
         if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
@@ -481,6 +911,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           !state.analysis ||
           !state.sessionToken ||
           !state.compressedImage ||
+          state.diagnosticStatus !== "succeeded" ||
           state.questionStatus === "loading" ||
           state.questionStatus === "complete" ||
           state.analysis.safety.riskLevel === "professional_help_only" ||
@@ -497,8 +928,8 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           activeQuestionId: null,
           announcement:
             state.answers.length === 0
-              ? "AI is choosing a question from the uploaded image."
-              : "AI is adapting the next question to your latest observation.",
+              ? "Checking whether one visible detail is needed before the repair guide."
+              : "Updating the repair check with your latest detail.",
         });
         try {
           const response = await services.getNextQuestion(
@@ -533,7 +964,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             questionError: null,
             activeQuestionId: response.question.id,
             focusedHotspotId: response.question.hotspotId ?? current.focusedHotspotId,
-            announcement: `AI asks: ${response.question.prompt}`,
+            announcement: `One repair detail is needed: ${response.question.prompt}`,
           });
           return { ok: true };
         } catch (error) {
@@ -544,11 +975,11 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           const cancelled = isCancelled(error) || task.controller.signal.aborted;
           commit({
             questionStatus: "failed",
-            questionError: cancelled ? "Question generation was cancelled." : publicError(error),
+            questionError: cancelled ? "The photo check was cancelled." : publicError(error),
             questionMessage: null,
             announcement: cancelled
-              ? "Question generation was cancelled."
-              : "The AI could not choose the next question. You can retry or continue.",
+              ? "The photo check was cancelled."
+              : "The photo check could not finish. You can retry or continue.",
           });
           return cancelled
             ? { ok: false, code: "CANCELLED" }
@@ -570,12 +1001,15 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         questionTaskController?.abort();
         questionTaskController = null;
         questionTaskSequence += 1;
+        assistantTaskController?.abort();
+        assistantTaskController = null;
+        assistantTaskSequence += 1;
         commit({
           questionStatus: "complete",
           questionError: null,
           questionMessage: "Continuing with the evidence collected so far.",
           activeQuestionId: null,
-          announcement: "The AI interview is complete. Repair guidance can now be prepared.",
+          announcement: "The repair check is complete. The illustrated guide can now be created.",
         });
       },
       openImageUploader(options) {
@@ -588,7 +1022,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           uploaderFocusRequest: get().uploaderFocusRequest + 1,
           uploaderPromptVisible: true,
           announcement:
-            "Choose a photo in the highlighted upload area. The browser agent cannot choose a local file.",
+            "Choose a photo in the highlighted upload area. Assistance cannot choose a local file.",
           reversibleActivity: reversible("Opened the image uploader", previous),
         });
         return { ok: true };
@@ -654,7 +1088,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
             activeQuestionId: null,
             questions: [],
             questionStatus: safetyStop ? "complete" : "idle",
-            questionMessage: safetyStop ? "The safety stop ends the AI interview." : null,
+            questionMessage: safetyStop ? "The safety finding prevents actionable steps." : null,
             questionError: null,
             answers: [],
             isBusy: false,
@@ -663,13 +1097,11 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
               ? "A safety stop is active. Qualified help is recommended."
               : `${response.analysis.objectName} identified. Review the findings as hypotheses.`,
           });
-          if (!safetyStop) {
-            const next = get();
-            void next.loadNextQuestion({
-              expectedStateVersion: next.stateVersion,
-              source: options.source,
-            });
-          }
+          const diagnosticState = get();
+          void diagnosticState.generateDiagnosticView({
+            expectedStateVersion: diagnosticState.stateVersion,
+            source: options.source,
+          });
           return { ok: true };
         } catch (error) {
           if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
@@ -698,6 +1130,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         if (state.analysis.safety.riskLevel === "professional_help_only") {
           return { ok: false, code: "SAFETY_STOP" };
         }
+        const compressedImage = state.compressedImage;
         const task = beginTask(options.signal);
         commit({
           stage: "preparing",
@@ -711,18 +1144,73 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           modelError: null,
           visualMode: "model",
           exploded: false,
-          announcement: "Preparing a clean reference for the 3D provider.",
+          announcement: "Preparing a clean reference for 3D reconstruction.",
           reversibleActivity: null,
         });
         try {
-          const response = await services.startModelGeneration(
-            {
-              sessionToken: state.sessionToken,
-              image: state.compressedImage,
-              analysis: state.analysis,
-            },
-            task.controller.signal,
-          );
+          let activeSessionToken = state.sessionToken;
+          let activeAnalysis = state.analysis;
+          const startModel = () =>
+            services.startModelGeneration(
+              {
+                sessionToken: activeSessionToken,
+                image: compressedImage,
+                analysis: activeAnalysis,
+              },
+              task.controller.signal,
+            );
+          let response: Awaited<ReturnType<WorkspaceServices["startModelGeneration"]>>;
+          try {
+            response = await startModel();
+          } catch (error) {
+            if (!isSessionExpired(error)) throw error;
+            commit({
+              generationMessage: "Refreshing your repair session.",
+              announcement: "Refreshing the repair session before rebuilding the 3D model.",
+            });
+            const refreshed = await services.analyzeObject(
+              {
+                image: compressedImage,
+                ...(state.problemDescription.trim()
+                  ? { problemDescription: state.problemDescription.trim() }
+                  : {}),
+              },
+              task.controller.signal,
+            );
+            if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
+            activeSessionToken = refreshed.sessionToken;
+            activeAnalysis = refreshed.analysis;
+            const objectNameCorrection =
+              state.objectNameCorrection === state.analysis.objectName
+                ? refreshed.analysis.objectName
+                : state.objectNameCorrection;
+            commit({
+              sessionToken: refreshed.sessionToken,
+              analysis: refreshed.analysis,
+              objectNameCorrection,
+              generationMessage: "Preparing a clean reference.",
+            });
+            if (refreshed.analysis.safety.riskLevel === "professional_help_only") {
+              currentTaskController = null;
+              task.release();
+              commit({
+                stage: "safety-stop",
+                generationStatus: "failed",
+                generationProgress: null,
+                generationError: failure(
+                  "3D generation paused because the refreshed safety review recommends professional help.",
+                ),
+                operationError: null,
+                generationMessage: "3D generation paused for safety.",
+                isBusy: false,
+                originalFile: null,
+                exploded: false,
+                announcement: "The refreshed safety review recommends qualified help.",
+              });
+              return { ok: false, code: "SAFETY_STOP" };
+            }
+            response = await startModel();
+          }
           if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
           commit({
             stage: "generating",
@@ -836,7 +1324,7 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         if (!exists) return { ok: false, code: "INVALID_INPUT" };
         commit({
           activeQuestionId: id,
-          announcement: "A question is open for the person. The browser agent did not answer it.",
+          announcement: "A question is open for the person to answer.",
           reversibleActivity: reversible("Opened a human observation question", {
             activeQuestionId: state.activeQuestionId,
             announcement: state.announcement,
@@ -885,12 +1373,36 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
           commit({
             stage: "guidance",
             plan: response.plan,
+            planToken: response.planToken,
+            repairStepVisuals: repairGuideSteps(response.plan).map(() => ({
+              status: "idle",
+              image: null,
+              error: null,
+            })),
+            activeRepairStepIndex: 0,
+            visualMode:
+              !response.plan.professionalHelp.required && repairGuideSteps(response.plan).length > 0
+                ? "guide"
+                : state.visualMode,
+            guidePageOpen:
+              !response.plan.professionalHelp.required &&
+              repairGuideSteps(response.plan).length > 0,
             operationError: null,
             isBusy: false,
             announcement: response.plan.professionalHelp.required
               ? "The guidance recommends qualified help."
               : "Cautious repair guidance is ready for human review.",
           });
+          const guideState = get();
+          if (
+            !response.plan.professionalHelp.required &&
+            repairGuideSteps(response.plan).length > 0
+          ) {
+            void guideState.generateRepairStepVisuals({
+              expectedStateVersion: guideState.stateVersion,
+              source: options.source,
+            });
+          }
           return { ok: true };
         } catch (error) {
           if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
@@ -962,8 +1474,13 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         diagnosticTaskController?.abort();
         diagnosticTaskController = null;
         diagnosticTaskSequence += 1;
+        repairVisualTaskController?.abort();
+        repairVisualTaskController = null;
+        repairVisualTaskSequence += 1;
         questionTaskController?.abort();
         questionTaskController = null;
+        assistantTaskController?.abort();
+        assistantTaskController = null;
         questionTaskSequence += 1;
         revokePreviewUrl(get().image?.previewUrl);
         reversiblePatch = null;
@@ -978,12 +1495,28 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         currentTaskController = null;
         diagnosticTaskController?.abort();
         diagnosticTaskController = null;
+        repairVisualTaskController?.abort();
+        repairVisualTaskController = null;
         questionTaskController?.abort();
         questionTaskController = null;
         revokePreviewUrl(get().image?.previewUrl);
       },
     };
   });
+
+  if (persistence.available) {
+    store.subscribe((state) => {
+      if (!persistenceReady || !state.hasHydrated) return;
+      const record = persistedWorkspaceRecord(state);
+      persistenceQueue = persistenceQueue
+        .catch(() => undefined)
+        .then(() =>
+          record.state.image || record.state.analysis
+            ? persistence.save(record)
+            : persistence.clear(),
+        );
+    });
+  }
 
   return store;
 }

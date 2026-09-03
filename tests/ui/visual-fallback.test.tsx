@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ObjectAnalysis } from "../../src/generation/contracts";
+import type { ObjectAnalysis, RepairPlan } from "../../src/generation/contracts";
 import { workspaceStore } from "../../src/workspace";
 
 vi.mock("../../src/scene/quality", async (importOriginal) => {
@@ -39,6 +39,30 @@ const analysis: ObjectAnalysis = {
   providerSafeDescription: "One desk fan.",
 };
 
+const guidePlan: RepairPlan = {
+  limitations: ["The fastener type is not visible."],
+  unknowns: ["Internal damage is unknown."],
+  riskLevel: "moderate",
+  hypotheses: [],
+  safeNextChecks: [
+    {
+      title: "Check the guard",
+      instructions: "With the fan unplugged, check the visible guard alignment.",
+      caution: "Do not reach through the guard.",
+    },
+  ],
+  proposedRepairPlan: [
+    {
+      title: "Tighten the fastener",
+      instructions: "Support the guard and tighten only the visible fastener.",
+      caution: null,
+    },
+  ],
+  toolsAndMaterials: ["Matching hand tool"],
+  stopConditions: ["Stop if damaged wiring is visible."],
+  professionalHelp: { required: false, reason: "No high-risk work is proposed." },
+};
+
 describe("3D model fallback", () => {
   beforeEach(() => {
     workspaceStore.getState().reset();
@@ -57,14 +81,14 @@ describe("3D model fallback", () => {
     vi.restoreAllMocks();
   });
 
-  it("starts the selected OpenAI and Meshy views from enabled tabs", async () => {
+  it("opens on the damage map without a photo tab and starts enabled AI views", async () => {
     const user = userEvent.setup();
     workspaceStore.setState({
       model: null,
       modelError: null,
       generationStatus: "idle",
       diagnosticStatus: "idle",
-      visualMode: "photo",
+      visualMode: "diagnostic",
       isBusy: false,
     });
     const diagnostic = vi
@@ -75,6 +99,16 @@ describe("3D model fallback", () => {
       .mockResolvedValue({ ok: true });
     render(<VisualWorkspace />);
 
+    expect(screen.queryByText("Visual diagnosis")).not.toBeInTheDocument();
+    expect(screen.queryByText("See the damage clearly.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Choose a view, then select a numbered area."),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Photo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Damage map" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     await user.click(screen.getByRole("button", { name: "Damage map" }));
     expect(diagnostic).toHaveBeenCalledOnce();
     expect(workspaceStore.getState().visualMode).toBe("diagnostic");
@@ -87,19 +121,15 @@ describe("3D model fallback", () => {
     model.mockRestore();
   });
 
-  it("returns to the interactive photo when the remote GLB cannot load", async () => {
-    const user = userEvent.setup();
+  it("returns to the clean original when the remote GLB cannot load", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     render(<VisualWorkspace />);
 
     await waitFor(() =>
-      expect(screen.getByAltText("Uploaded view of Desk fan")).toHaveAttribute("src", "blob:fan"),
+      expect(screen.getByAltText("Original view of Desk fan")).toHaveAttribute("src", "blob:fan"),
     );
     expect(screen.getByText(/remote model blocked access/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Inspect area 1: Front guard" }));
-    expect(workspaceStore.getState().focusedHotspotId).toBe("guard");
-    expect(screen.getByText("Selected area")).toBeInTheDocument();
-    expect(screen.getByText("The visible front guard.")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /areas that may need attention/i })).toBeNull();
     consoleError.mockRestore();
   });
 
@@ -122,7 +152,7 @@ describe("3D model fallback", () => {
       generationStatus: "failed",
       generationError: {
         code: "MODEL_GENERATION_FAILED",
-        message: "The provider could not build this model.",
+        message: "The 3D reconstruction could not build this model.",
         recoverable: true,
       },
       visualMode: "model",
@@ -135,12 +165,14 @@ describe("3D model fallback", () => {
       </>,
     );
 
-    expect(screen.getByText("The provider could not build this model.")).toBeInTheDocument();
+    expect(
+      screen.getByText("The 3D reconstruction could not build this model."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /does the guard move/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry 3D model" })).toBeInTheDocument();
   });
 
-  it("keeps the 3D tab enabled and renders Meshy progress in the visual canvas", () => {
+  it("keeps the 3D tab enabled and renders AI progress in the visual canvas", () => {
     workspaceStore.setState({
       model: null,
       modelError: null,
@@ -152,7 +184,7 @@ describe("3D model fallback", () => {
       visualMode: "model",
     });
 
-    render(<VisualWorkspace />);
+    const { container } = render(<VisualWorkspace />);
 
     expect(screen.getByRole("button", { name: /3D model/i })).toBeEnabled();
     expect(
@@ -160,10 +192,12 @@ describe("3D model fallback", () => {
     ).toHaveAttribute("aria-valuenow", "47");
     expect(screen.getByText("47% complete")).toBeInTheDocument();
     expect(screen.getByText("Building geometry.")).toBeInTheDocument();
+    expect(screen.getByText("3D reconstruction")).toBeInTheDocument();
+    expect(screen.getByText("You can keep reviewing the damage map")).toBeInTheDocument();
+    expect(container.querySelectorAll(".loading-cube")).toHaveLength(3);
   });
 
-  it("renders the original and generated damage map as a synchronized comparison", async () => {
-    const user = userEvent.setup();
+  it("renders the original and generated damage map as a synchronized comparison", () => {
     workspaceStore.setState({
       diagnosticImage: { mediaType: "image/webp", base64: "QUFBQQ==" },
       diagnosticStatus: "succeeded",
@@ -173,11 +207,89 @@ describe("3D model fallback", () => {
     render(<VisualWorkspace />);
 
     expect(screen.getByAltText("Original view of Desk fan")).toHaveAttribute("src", "blob:fan");
-    expect(screen.getByAltText("OpenAI diagnostic damage map of Desk fan")).toHaveAttribute(
+    expect(screen.getByAltText("AI diagnostic damage map of Desk fan")).toHaveAttribute(
       "src",
       "data:image/webp;base64,QUFBQQ==",
     );
-    await user.click(screen.getByRole("button", { name: "Inspect area 1: Front guard" }));
-    expect(screen.getByText("The visible front guard.")).toBeInTheDocument();
+    expect(screen.getByText("Original")).toBeInTheDocument();
+    expect(screen.getByText("AI map")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: /areas that may need attention/i })).toBeNull();
+  });
+
+  it("keeps each generated wireframe aligned with its interactive repair step", async () => {
+    const user = userEvent.setup();
+    workspaceStore.setState({
+      plan: guidePlan,
+      planToken: "p".repeat(48),
+      repairStepVisuals: [
+        {
+          status: "succeeded",
+          image: { mediaType: "image/webp", base64: "QUFBQQ==" },
+          error: null,
+        },
+        {
+          status: "succeeded",
+          image: { mediaType: "image/webp", base64: "QkJCQg==" },
+          error: null,
+        },
+      ],
+      activeRepairStepIndex: 0,
+      visualMode: "guide",
+    });
+
+    const { container } = render(
+      <>
+        <VisualWorkspace />
+        <RepairGuidance />
+      </>,
+    );
+
+    expect(screen.getByAltText("Wireframe for step 1: Check the guard")).toHaveAttribute(
+      "src",
+      "data:image/webp;base64,QUFBQQ==",
+    );
+    expect(container.querySelector(".repair-step-title mark")).toHaveTextContent("Check");
+    expect(container.querySelector(".step-instruction > span")).toHaveTextContent(
+      "With the fan unplugged, check the visible guard alignment.",
+    );
+    await user.click(screen.getByRole("button", { name: "Show next step" }));
+    expect(screen.getByRole("heading", { name: "Tighten the fastener" })).toBeInTheDocument();
+    expect(container.querySelector(".repair-step-title mark")).toHaveTextContent("Tighten");
+    expect(screen.getByAltText("Wireframe for step 2: Tighten the fastener")).toHaveAttribute(
+      "src",
+      "data:image/webp;base64,QkJCQg==",
+    );
+    expect(screen.getByRole("button", { name: "Review from start" })).toBeInTheDocument();
+  });
+
+  it("shows animated indeterminate progress while a repair visual is being drawn", () => {
+    workspaceStore.setState({
+      plan: guidePlan,
+      repairStepVisuals: [{ status: "generating", image: null, error: null }],
+      activeRepairStepIndex: 0,
+      visualMode: "guide",
+    });
+
+    const { container } = render(<VisualWorkspace />);
+
+    expect(screen.getByText("Drawing step 1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("progressbar", { name: "Generating visual for step 1" }),
+    ).toBeInTheDocument();
+    expect(container.querySelector(".guide-scan-line")).toBeInTheDocument();
+    expect(container.querySelector(".guide-drawing-mark")).toBeInTheDocument();
+  });
+
+  it("does not overlay approximate analysis coordinates on the source photo", () => {
+    workspaceStore.setState({
+      diagnosticStatus: "succeeded",
+      diagnosticImage: { mediaType: "image/webp", base64: "QUFBQQ==" },
+      visualMode: "diagnostic",
+    });
+    render(<VisualWorkspace />);
+
+    expect(screen.getByAltText("Original view of Desk fan")).toHaveAttribute("src", "blob:fan");
+    expect(screen.queryByRole("group", { name: /areas that may need attention/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /inspect area/i })).toBeNull();
   });
 });

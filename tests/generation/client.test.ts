@@ -1,8 +1,10 @@
 import {
   analyzeObject,
+  askRepairAssistant,
   draftRepairPlan,
   type GenerationClientError,
   generateDiagnosticView,
+  generateRepairStepVisual,
   getModelGeneration,
   getNextQuestion,
   startModelGeneration,
@@ -11,6 +13,7 @@ import { objectAnalysis, pngImage, repairPlan } from "./fixtures";
 
 const SESSION_TOKEN = "s".repeat(48);
 const JOB_ID = "j".repeat(48);
+const PLAN_TOKEN = "p".repeat(48);
 
 describe("typed generation client contracts", () => {
   afterEach(() => {
@@ -119,6 +122,56 @@ describe("typed generation client contracts", () => {
     expect(body.answers[0].question).toContain("shade fastener");
   });
 
+  it("requests one authenticated wireframe for a signed repair-plan step", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ stepIndex: 0, image: pngImage() }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      generateRepairStepVisual(
+        {
+          sessionToken: SESSION_TOKEN,
+          planToken: PLAN_TOKEN,
+          image: pngImage(),
+          analysis: objectAnalysis(),
+          plan: repairPlan(),
+          stepIndex: 0,
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toMatchObject({ stepIndex: 0, image: { mediaType: "image/png" } });
+    expect(fetchMock.mock.calls.at(0)?.[0]).toBe("/api/object/guide");
+    const init = fetchMock.mock.calls.at(0)?.[1];
+    expect(init?.headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
+    expect(JSON.parse(init?.body ?? "null")).toMatchObject({
+      planToken: PLAN_TOKEN,
+      stepIndex: 0,
+    });
+  });
+
+  it("sends an authenticated contextual repair question", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ answer: "Use the shown tool." }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      askRepairAssistant(
+        {
+          sessionToken: SESSION_TOKEN,
+          planToken: PLAN_TOKEN,
+          image: pngImage(),
+          analysis: objectAnalysis(),
+          plan: repairPlan(),
+          activeStepIndex: 0,
+          messages: [{ role: "user", content: "Which tool should I use?" }],
+        },
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ answer: "Use the shown tool." });
+    expect(fetchMock.mock.calls.at(0)?.[0]).toBe("/api/object/chat");
+    const init = fetchMock.mock.calls.at(0)?.[1];
+    expect(init?.headers.Authorization).toBe(`Bearer ${SESSION_TOKEN}`);
+    expect(JSON.parse(init?.body ?? "null")).not.toHaveProperty("sessionToken");
+  });
+
   it("encodes the opaque job ID for getModelGeneration", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
@@ -143,7 +196,9 @@ describe("typed generation client contracts", () => {
   });
 
   it("calls draftRepairPlan and validates the complete plan", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ plan: repairPlan() }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ plan: repairPlan(), planToken: PLAN_TOKEN }));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -162,7 +217,7 @@ describe("typed generation client contracts", () => {
         },
         new AbortController().signal,
       ),
-    ).resolves.toEqual({ plan: repairPlan() });
+    ).resolves.toEqual({ plan: repairPlan(), planToken: PLAN_TOKEN });
     expect(fetchMock.mock.calls.at(0)?.[0]).toBe("/api/object/plan");
   });
 

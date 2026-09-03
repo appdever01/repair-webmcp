@@ -99,7 +99,7 @@ describe("observable agent runtime contracts", () => {
     expect(failed.activityStore.getSnapshot()).toMatchObject({
       connectionState: "error",
       registeredToolCount: 0,
-      lastRegistrationError: "WebMCP tools could not be registered.",
+      lastRegistrationError: "Assistance could not be connected.",
     });
     expect(JSON.stringify(failed.activityStore.getSnapshot())).not.toContain("do-not-leak");
     await failed.dispose();

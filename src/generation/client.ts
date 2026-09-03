@@ -2,20 +2,28 @@ import type { z } from "zod";
 import {
   type AnalyzeObjectRequest,
   type AnalyzeObjectResponse,
+  type AskRepairAssistantRequest,
+  type AskRepairAssistantResponse,
   analyzeObjectRequestSchema,
   analyzeObjectResponseSchema,
   apiErrorResponseSchema,
+  askRepairAssistantRequestSchema,
+  askRepairAssistantResponseSchema,
   type DraftRepairPlanRequest,
   type DraftRepairPlanResponse,
   draftRepairPlanRequestSchema,
   draftRepairPlanResponseSchema,
   type GenerateDiagnosticViewRequest,
   type GenerateDiagnosticViewResponse,
+  type GenerateRepairStepVisualRequest,
+  type GenerateRepairStepVisualResponse,
   type GenerationErrorCode,
   type GetModelGenerationRequest,
   type GetModelGenerationResponse,
   generateDiagnosticViewRequestSchema,
   generateDiagnosticViewResponseSchema,
+  generateRepairStepVisualRequestSchema,
+  generateRepairStepVisualResponseSchema,
   getModelGenerationRequestSchema,
   getModelGenerationResponseSchema,
   type NextQuestionRequest,
@@ -143,6 +151,48 @@ export async function generateDiagnosticView(
       body: JSON.stringify(body),
     },
     generateDiagnosticViewResponseSchema,
+    signal,
+  );
+}
+
+export async function generateRepairStepVisual(
+  input: GenerateRepairStepVisualRequest,
+  signal: AbortSignal,
+): Promise<GenerateRepairStepVisualResponse> {
+  const parsed = generateRepairStepVisualRequestSchema.parse(input);
+  const { sessionToken, ...body } = parsed;
+  return requestJson(
+    "/api/object/guide",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+    generateRepairStepVisualResponseSchema,
+    signal,
+  );
+}
+
+export async function askRepairAssistant(
+  input: AskRepairAssistantRequest,
+  signal: AbortSignal,
+): Promise<AskRepairAssistantResponse> {
+  const parsed = askRepairAssistantRequestSchema.parse(input);
+  const { sessionToken, ...body } = parsed;
+  return requestJson(
+    "/api/object/chat",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+    askRepairAssistantResponseSchema,
     signal,
   );
 }

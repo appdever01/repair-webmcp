@@ -1,5 +1,6 @@
 import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { RepairIcon } from "../design/RepairIcon";
+import { repairGuideSteps } from "../generation/repairGuide";
 import { modelRequestHeaders } from "../scene/modelRequest";
 import { supportsWebGL } from "../scene/quality";
 import type { SceneCommand } from "../scene/RepairScene";
@@ -32,55 +33,6 @@ class ModelBoundary extends Component<
   }
 }
 
-function HotspotLayer() {
-  const analysis = useWorkspaceStore((state) => state.analysis);
-  const focused = useWorkspaceStore((state) => state.focusedHotspotId);
-  const focusedIndex = analysis?.hotspots.findIndex((hotspot) => hotspot.id === focused) ?? -1;
-  const focusedHotspot = focusedIndex >= 0 ? analysis?.hotspots[focusedIndex] : null;
-
-  return (
-    <>
-      <fieldset className="visual-hotspots">
-        <legend className="sr-only">Areas that may need attention</legend>
-        {analysis?.hotspots.map((hotspot, index) => (
-          <button
-            key={hotspot.id}
-            type="button"
-            style={{ left: `${hotspot.x * 100}%`, top: `${hotspot.y * 100}%` }}
-            data-focused={focused === hotspot.id}
-            aria-label={`Inspect area ${index + 1}: ${hotspot.label}`}
-            aria-pressed={focused === hotspot.id}
-            onClick={() =>
-              workspaceStore.getState().focusHotspot(hotspot.id, humanActionOptions(workspaceStore))
-            }
-          >
-            <span>{index + 1}</span>
-          </button>
-        ))}
-      </fieldset>
-      {focusedHotspot && (
-        <div className="hotspot-focus-card" aria-live="polite">
-          <b>{focusedIndex + 1}</b>
-          <span>
-            <small>Selected area</small>
-            <strong>{focusedHotspot.label}</strong>
-            <p>{focusedHotspot.description}</p>
-          </span>
-        </div>
-      )}
-    </>
-  );
-}
-
-function PhotoView({ source, objectName }: { source: string; objectName: string }) {
-  return (
-    <div className="photo-frame">
-      <img src={source} alt={`Uploaded view of ${objectName}`} />
-      <HotspotLayer />
-    </div>
-  );
-}
-
 function DiagnosticView({ source, objectName }: { source: string; objectName: string }) {
   const state = useWorkspaceStore((current) => current);
   const diagnosticSource = state.diagnosticImage
@@ -92,22 +44,22 @@ function DiagnosticView({ source, objectName }: { source: string; objectName: st
   return (
     <div className="diagnostic-compare">
       <figure className="diagnostic-frame">
-        <img src={source} alt={`Original view of ${objectName}`} />
-        <figcaption>Original photo</figcaption>
+        <div className="photo-frame">
+          <img src={source} alt={`Original view of ${objectName}`} />
+        </div>
+        <figcaption>Original</figcaption>
       </figure>
       <figure className="diagnostic-frame diagnostic-map-frame">
         {diagnosticSource ? (
           <>
-            <img src={diagnosticSource} alt={`OpenAI diagnostic damage map of ${objectName}`} />
-            <HotspotLayer />
-            <figcaption>AI damage map · verify with photo</figcaption>
+            <img src={diagnosticSource} alt={`AI diagnostic damage map of ${objectName}`} />
+            <figcaption>AI map</figcaption>
           </>
         ) : state.diagnosticStatus === "generating" ? (
           <div className="diagnostic-loading" role="status">
             <span className="diagnostic-scan" aria-hidden="true" />
             <RepairIcon name="inspect" size={30} />
-            <strong>Drawing the damage map</strong>
-            <p>OpenAI is preserving the object and turning visible problem areas into linework.</p>
+            <strong>Drawing damage map</strong>
             <div className="indeterminate-progress" aria-hidden="true">
               <span />
             </div>
@@ -115,13 +67,12 @@ function DiagnosticView({ source, objectName }: { source: string; objectName: st
         ) : (
           <div className="diagnostic-loading" role={state.diagnosticError ? "alert" : "status"}>
             <RepairIcon name={state.diagnosticError ? "warning" : "inspect"} size={30} />
-            <strong>
-              {state.diagnosticError ? "Damage map unavailable" : "Create a damage map"}
-            </strong>
-            <p>
-              {state.diagnosticError ??
-                "Generate a wireframe comparison with the suspected areas clearly circled."}
-            </p>
+            {state.diagnosticError && (
+              <>
+                <strong>Damage map unavailable</strong>
+                <p>{state.diagnosticError}</p>
+              </>
+            )}
             <button type="button" className="secondary-button" onClick={requestDiagnostic}>
               <RepairIcon name={state.diagnosticError ? "reset" : "inspect"} />
               {state.diagnosticError ? "Try again" : "Generate damage map"}
@@ -133,7 +84,149 @@ function DiagnosticView({ source, objectName }: { source: string; objectName: st
   );
 }
 
-function ModelProgress({ webgl }: { webgl: boolean }) {
+function RepairGuideView({ source, objectName }: { source: string; objectName: string }) {
+  const state = useWorkspaceStore((current) => current);
+  const steps = state.plan ? repairGuideSteps(state.plan) : [];
+  const activeIndex = Math.min(state.activeRepairStepIndex, Math.max(steps.length - 1, 0));
+  const activeStep = steps[activeIndex];
+  const visual = state.repairStepVisuals[activeIndex];
+  const generatedSource = visual?.image
+    ? `data:${visual.image.mediaType};base64,${visual.image.base64}`
+    : null;
+
+  if (!activeStep) return null;
+
+  return (
+    <div className="repair-guide-canvas">
+      <figure className="repair-guide-frame">
+        {generatedSource ? (
+          <img
+            src={generatedSource}
+            alt={`Wireframe for step ${activeIndex + 1}: ${activeStep.step.title}`}
+          />
+        ) : (
+          <img className="repair-guide-source" src={source} alt={objectName} />
+        )}
+        {!generatedSource && (
+          <div
+            className="repair-guide-generation"
+            role={visual?.status === "failed" ? "alert" : "status"}
+          >
+            {visual?.status !== "failed" && <span className="guide-scan-line" aria-hidden="true" />}
+            <span className="guide-drawing-mark" aria-hidden="true">
+              <RepairIcon name={visual?.status === "failed" ? "warning" : "repair"} size={30} />
+            </span>
+            <strong>
+              {visual?.status === "failed"
+                ? "Visual unavailable"
+                : `Drawing step ${activeIndex + 1}`}
+            </strong>
+            {visual?.status !== "failed" && (
+              <div
+                className="indeterminate-progress guide-progress"
+                role="progressbar"
+                aria-label={`Generating visual for step ${activeIndex + 1}`}
+              >
+                <span />
+              </div>
+            )}
+            {visual?.status === "failed" && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() =>
+                  void workspaceStore
+                    .getState()
+                    .generateRepairStepVisuals(humanActionOptions(workspaceStore))
+                }
+              >
+                <RepairIcon name="reset" /> Retry visual
+              </button>
+            )}
+          </div>
+        )}
+        <figcaption>
+          Step {activeIndex + 1} / {steps.length}
+        </figcaption>
+      </figure>
+      <nav className="repair-guide-steps" aria-label="Repair guide steps">
+        {steps.map(({ kind, step }, index) => (
+          <button
+            key={`${kind}-${step.title}`}
+            type="button"
+            aria-label={`Show step ${index + 1}: ${step.title}`}
+            aria-current={index === activeIndex ? "step" : undefined}
+            data-status={state.repairStepVisuals[index]?.status ?? "idle"}
+            onClick={() => workspaceStore.getState().setActiveRepairStep(index)}
+          >
+            <span>{index + 1}</span>
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+export function RepairGuideVisual() {
+  const state = useWorkspaceStore((current) => current);
+  const [webgl] = useState(supportsWebGL);
+  const [command] = useState<SceneCommand>({ id: 0, type: "reset" });
+  const objectName = state.objectNameCorrection || state.analysis?.objectName || "the object";
+  const showModel = state.visualMode === "model";
+  const showReadyModel = Boolean(showModel && state.model && webgl && !state.modelError);
+
+  useEffect(() => {
+    if (showReadyModel) void loadScene().catch(() => undefined);
+  }, [showReadyModel]);
+
+  if (!state.image || !state.plan) return null;
+
+  return (
+    <section
+      className="repair-guide-visual"
+      data-view={showModel ? "model" : "steps"}
+      aria-label={showModel ? "Interactive 3D object" : "Illustrated repair step"}
+    >
+      {showReadyModel && state.model ? (
+        <ModelBoundary
+          modelKey={state.model.glbUrl}
+          onFailure={() => {
+            workspaceStore.getState().setModelError("The 3D model could not be loaded.");
+            workspaceStore.getState().setVisualMode("guide");
+          }}
+        >
+          <Suspense
+            fallback={
+              <div className="model-loading" role="status">
+                Loading the interactive model
+              </div>
+            }
+          >
+            <RepairScene
+              modelUrl={state.model.glbUrl}
+              command={command}
+              exploded={state.exploded}
+              requestHeaders={modelRequestHeaders(state.model.glbUrl, state.sessionToken)}
+            />
+            <span className="guide-model-hint">Drag to rotate · scroll to zoom</span>
+          </Suspense>
+        </ModelBoundary>
+      ) : showModel ? (
+        <ModelProgress webgl={webgl} guideContext />
+      ) : (
+        <RepairGuideView source={state.image.previewUrl} objectName={objectName} />
+      )}
+    </section>
+  );
+}
+
+function ModelProgress({
+  webgl,
+  guideContext = false,
+}: {
+  webgl: boolean;
+  guideContext?: boolean;
+}) {
   const state = useWorkspaceStore((current) => current);
   const active =
     ["queued", "processing"].includes(state.generationStatus) || state.stage === "preparing";
@@ -147,7 +240,11 @@ function ModelProgress({ webgl }: { webgl: boolean }) {
       <div className="model-generation-state" role="status">
         <RepairIcon name="warning" size={34} />
         <strong>3D is not supported in this browser</strong>
-        <p>The photo and AI damage map remain fully usable.</p>
+        <p>
+          {guideContext
+            ? "Your illustrated repair steps remain fully usable."
+            : "The photo and AI damage map remain fully usable."}
+        </p>
       </div>
     );
   }
@@ -155,12 +252,34 @@ function ModelProgress({ webgl }: { webgl: boolean }) {
   if (active) {
     return (
       <div className="model-generation-state" role="status">
-        <div className="model-build-visual" aria-hidden="true">
-          <RepairIcon name="cube" size={42} />
-          <span />
+        <div className="model-cube-loader" aria-hidden="true">
+          <span className="loading-cube loading-cube-main">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="loading-cube loading-cube-left">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="loading-cube loading-cube-right">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
         </div>
         <div className="model-build-copy">
-          <small>Meshy image-to-3D</small>
+          <small>3D reconstruction</small>
           <strong>
             {state.stage === "preparing" ? "Preparing your photo" : "Building the model"}
           </strong>
@@ -178,7 +297,11 @@ function ModelProgress({ webgl }: { webgl: boolean }) {
         </div>
         <div className="model-progress-meta">
           <span>{progress === null ? "Working" : `${progress}% complete`}</span>
-          <span>You can keep reviewing the photo</span>
+          <span>
+            {guideContext
+              ? "You can switch back to the steps anytime"
+              : "You can keep reviewing the damage map"}
+          </span>
         </div>
         <button
           type="button"
@@ -196,7 +319,7 @@ function ModelProgress({ webgl }: { webgl: boolean }) {
   return (
     <div className="model-generation-state" role={state.generationError ? "alert" : "status"}>
       <RepairIcon name={state.generationError ? "warning" : "cube"} size={38} />
-      <small>Meshy image-to-3D</small>
+      <small>3D reconstruction</small>
       <strong>
         {safetyStopped
           ? "3D generation paused for safety"
@@ -208,7 +331,7 @@ function ModelProgress({ webgl }: { webgl: boolean }) {
         {safetyStopped
           ? "Continue with the photo and follow the safety guidance."
           : (state.generationError?.message ??
-            "Rotate, zoom, and inspect the object from every angle once Meshy finishes.")}
+            "Rotate, zoom, and inspect the object from every angle once the model is ready.")}
       </p>
       {!safetyStopped && (
         <button type="button" className="primary-button" disabled={state.isBusy} onClick={retry}>
@@ -225,7 +348,9 @@ export function VisualWorkspace() {
   const [webgl] = useState(supportsWebGL);
   const [command, setCommand] = useState<SceneCommand>({ id: 0, type: "reset" });
   const modelAvailable = Boolean(state.model && webgl && !state.modelError);
+  const guideAvailable = Boolean(state.plan && repairGuideSteps(state.plan).length > 0);
   const showModel = state.visualMode === "model";
+  const showGuide = state.visualMode === "guide" && guideAvailable;
   const showReadyModel = showModel && modelAvailable;
   const objectName = state.objectNameCorrection || state.analysis?.objectName || "the object";
   const exploded = state.exploded;
@@ -236,12 +361,24 @@ export function VisualWorkspace() {
 
   const nextCommand = (type: SceneCommand["type"]) =>
     setCommand((current) => ({ id: current.id + 1, type }));
-  const choosePhoto = () => workspaceStore.getState().setVisualMode("photo");
   const chooseDiagnostic = () => {
     workspaceStore.getState().setVisualMode("diagnostic");
     const next = workspaceStore.getState();
     if (["idle", "failed"].includes(next.diagnosticStatus)) {
       void next.generateDiagnosticView(humanActionOptions(workspaceStore));
+    }
+  };
+  const chooseGuide = () => {
+    workspaceStore.getState().setGuidePageOpen(true);
+    const next = workspaceStore.getState();
+    if (
+      next.repairStepVisuals.length > 0 &&
+      !next.repairStepVisuals.some((visual) => visual.status === "generating") &&
+      next.repairStepVisuals.some(
+        (visual) => visual.status === "idle" || visual.status === "failed",
+      )
+    ) {
+      void next.generateRepairStepVisuals(humanActionOptions(workspaceStore));
     }
   };
   const chooseModel = () => {
@@ -257,18 +394,23 @@ export function VisualWorkspace() {
   };
 
   return (
-    <section className="visual-workspace" aria-labelledby="visual-title">
+    <section className="visual-workspace" aria-label="Object views">
       <div className="visual-toolbar">
-        <div>
-          <p className="eyebrow">Visual diagnosis</p>
-          <h2 id="visual-title">See the damage clearly.</h2>
-          <span>Choose a view, then select a numbered area.</span>
-        </div>
         <fieldset className="view-tabs">
           <legend className="sr-only">Choose object view</legend>
-          <button type="button" aria-pressed={state.visualMode === "photo"} onClick={choosePhoto}>
-            <RepairIcon name="camera" /> Photo
-          </button>
+          {guideAvailable && (
+            <button
+              type="button"
+              aria-label="Repair guide"
+              aria-pressed={showGuide}
+              onClick={chooseGuide}
+            >
+              <RepairIcon name="repair" /> Repair guide
+              {state.repairStepVisuals.some((visual) => visual.status === "generating") && (
+                <i aria-hidden="true" />
+              )}
+            </button>
+          )}
           <button
             type="button"
             aria-label={
@@ -296,7 +438,9 @@ export function VisualWorkspace() {
         </fieldset>
       </div>
       <div className="visual-stage" data-mode={state.visualMode}>
-        {showReadyModel && state.model ? (
+        {showGuide && state.image ? (
+          <RepairGuideView source={state.image.previewUrl} objectName={objectName} />
+        ) : showReadyModel && state.model ? (
           <ModelBoundary
             modelKey={state.model.glbUrl}
             onFailure={() =>
@@ -320,16 +464,14 @@ export function VisualWorkspace() {
           </ModelBoundary>
         ) : showModel ? (
           <ModelProgress webgl={webgl} />
-        ) : state.visualMode === "diagnostic" && state.image ? (
-          <DiagnosticView source={state.image.previewUrl} objectName={objectName} />
         ) : state.image ? (
-          <PhotoView source={state.image.previewUrl} objectName={objectName} />
+          <DiagnosticView source={state.image.previewUrl} objectName={objectName} />
         ) : null}
       </div>
       {state.modelError && (
         <p className="model-fallback-note" role="status">
-          <RepairIcon name="info" /> The remote model blocked access, so the original photo is
-          shown. Select 3D model to retry.
+          <RepairIcon name="info" /> The remote model blocked access, so the damage map is shown.
+          Select 3D model to retry.
         </p>
       )}
       {showReadyModel && (

@@ -29,7 +29,7 @@ export function handler(request: Request): Promise<Response> {
       ? {
           status: "ready" as const,
           question: null,
-          message: "The safety classification requires qualified help instead of more questions.",
+          message: "The safety finding requires qualified help instead of repair steps.",
         }
       : await chooseNextQuestionWithOpenAI(
           image,

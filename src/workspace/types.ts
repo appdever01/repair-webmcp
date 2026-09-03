@@ -6,6 +6,7 @@ import type {
   GenerationError,
   QuestionAnswer as GenerationQuestionAnswer,
   ObjectAnalysis,
+  RepairAssistantMessage,
   RepairPlan,
 } from "../generation/contracts";
 
@@ -24,10 +25,17 @@ export type WorkspaceStage =
   | "safety-stop"
   | "error";
 
-export type WorkspaceVisualMode = "photo" | "diagnostic" | "model";
+export type WorkspaceVisualMode = "diagnostic" | "guide" | "model";
 export type DiagnosticStatus = "idle" | "generating" | "succeeded" | "failed";
 export type QuestionStatus = "idle" | "loading" | "asking" | "complete" | "failed";
 export type WorkspaceActionSource = "human" | "webmcp" | "demo";
+export type AssistantChatStatus = "idle" | "sending" | "failed";
+
+export interface RepairStepVisualState {
+  status: DiagnosticStatus;
+  image: DiagnosticImage | null;
+  error: string | null;
+}
 
 export interface SelectedImage {
   name: string;
@@ -44,6 +52,7 @@ export interface ReversibleWorkspaceActivity {
 }
 
 export interface WorkspaceState {
+  hasHydrated: boolean;
   stage: WorkspaceStage;
   stateVersion: number;
   image: SelectedImage | null;
@@ -64,6 +73,7 @@ export interface WorkspaceState {
   model: GeneratedModel | null;
   modelError: string | null;
   visualMode: WorkspaceVisualMode;
+  guidePageOpen: boolean;
   exploded: boolean;
   focusedHotspotId: string | null;
   activeQuestionId: string | null;
@@ -73,11 +83,17 @@ export interface WorkspaceState {
   questionError: string | null;
   answers: readonly QuestionAnswer[];
   plan: RepairPlan | null;
+  planToken: string | null;
+  repairStepVisuals: readonly RepairStepVisualState[];
+  activeRepairStepIndex: number;
   operationError: string | null;
   isBusy: boolean;
   uploaderFocusRequest: number;
   uploaderPromptVisible: boolean;
   activityOpen: boolean;
+  assistantMessages: readonly RepairAssistantMessage[];
+  assistantChatStatus: AssistantChatStatus;
+  assistantChatError: string | null;
   announcement: string;
   reversibleActivity: ReversibleWorkspaceActivity | null;
 }

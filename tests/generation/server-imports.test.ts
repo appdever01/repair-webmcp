@@ -28,7 +28,9 @@ describe("serverless handler exports", () => {
     const routes = await Promise.all([
       import("../../api/object/analyze"),
       import("../../api/object/asset"),
+      import("../../api/object/chat"),
       import("../../api/object/diagnostic"),
+      import("../../api/object/guide"),
       import("../../api/object/model"),
       import("../../api/object/plan"),
       import("../../api/object/question"),

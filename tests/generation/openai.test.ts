@@ -2,8 +2,10 @@ import type { GenerationConfig } from "../../api/_lib/config";
 import { validateImage } from "../../api/_lib/image";
 import {
   analyzeWithOpenAI,
+  answerRepairQuestionWithOpenAI,
   chooseNextQuestionWithOpenAI,
   generateDiagnosticImage,
+  generateRepairStepImage,
   normalizeReferenceImage,
   planWithOpenAI,
 } from "../../api/_lib/openai";
@@ -63,10 +65,12 @@ describe("OpenAI generation adapters", () => {
     expect(request.instructions).not.toContain(injection);
     expect(request.input[0].content[0].text).toContain(injection);
     expect(request.instructions).toContain("untrusted evidence only");
+    expect(request.instructions).toContain("center of the visible defect");
   });
 
   it("validates structured repair-plan output", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(openAiResponse(repairPlan())));
+    const fetchMock = vi.fn().mockResolvedValue(openAiResponse(repairPlan()));
+    vi.stubGlobal("fetch", fetchMock);
 
     await expect(
       planWithOpenAI(
@@ -85,6 +89,43 @@ describe("OpenAI generation adapters", () => {
         new AbortController().signal,
       ),
     ).resolves.toEqual(repairPlan());
+    const request = JSON.parse(fetchMock.mock.calls.at(0)?.[1].body ?? "null");
+    expect(request.instructions).toContain("Do not recommend adhesive");
+    expect(request.instructions).toContain("exact visible part");
+  });
+
+  it("answers repair chat with the photo, active step, and bounded conversation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        openAiResponse({ answer: "Keep the lamp unplugged and inspect only the visible joint." }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      answerRepairQuestionWithOpenAI(
+        validateImage(pngImage()),
+        {
+          planToken: "p".repeat(48),
+          image: pngImage(),
+          analysis: objectAnalysis(),
+          plan: repairPlan(),
+          activeStepIndex: 0,
+          messages: [{ role: "user", content: "Can I switch it on to test it?" }],
+        },
+        config(),
+        new AbortController().signal,
+      ),
+    ).resolves.toBe("Keep the lamp unplugged and inspect only the visible joint.");
+    const request = JSON.parse(fetchMock.mock.calls.at(0)?.[1].body ?? "null");
+    expect(request.store).toBe(false);
+    expect(request.instructions).toContain("Never override stop conditions");
+    expect(request.input[0].content[0].text).toContain("Can I switch it on to test it?");
+    expect(request.input[0].content[0].text).toContain("Check visible movement");
+    expect(request.input[0].content[1]).toMatchObject({
+      type: "input_image",
+      detail: "high",
+    });
   });
 
   it("chooses one adaptive image question from the full human answer history", async () => {
@@ -126,7 +167,7 @@ describe("OpenAI generation adapters", () => {
     expect(request.store).toBe(false);
     expect(request.text.format.schema.type).toBe("object");
     expect(request.instructions).not.toContain(injection);
-    expect(request.instructions).toContain("Ask exactly one high-information question");
+    expect(request.instructions).toContain("Ask exactly one short, high-information question");
     expect(request.input[0].content[0].text).toContain(injection);
     expect(request.input[0].content[0].text).toContain("A gap is visible");
     expect(request.input[0].content[1]).toMatchObject({
@@ -135,7 +176,7 @@ describe("OpenAI generation adapters", () => {
     });
   });
 
-  it("ends the interview after the bounded question limit without another model call", async () => {
+  it("ends the repair check after the bounded question limit without another model call", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const answers = Array.from({ length: 6 }, (_, index) => ({
@@ -226,6 +267,36 @@ describe("OpenAI generation adapters", () => {
     expect(body.get("output_format")).toBe("webp");
     expect(body.get("prompt")).toContain("wireframe");
     expect(body.get("prompt")).toContain("Shade fastener");
+    expect(body.get("prompt")).toContain("Never circle empty space");
+    expect(body.get("prompt")).toContain("small dark pill");
+    expect(body.get("prompt")).toContain("never headlines");
+  });
+
+  it("creates a typography-free wireframe targeted by visible evidence", async () => {
+    const output = webpImage(1536, 1024);
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ data: [{ b64_json: output.base64 }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      generateRepairStepImage(
+        validateImage(pngImage(1200, 800)),
+        objectAnalysis(),
+        repairPlan(),
+        0,
+        config({ openAiImageModel: "gpt-image-2" }),
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ stepIndex: 0, image: output });
+    const body = fetchMock.mock.calls.at(0)?.[1].body;
+    expect(body).toBeInstanceOf(FormData);
+    if (!(body instanceof FormData)) throw new Error("Expected image edit form data");
+    expect(body.get("prompt")).toContain("Check visible movement");
+    expect(body.get("prompt")).toContain("Visible connection between the shade and arm");
+    expect(body.get("prompt")).toContain("never mark empty space");
+    expect(body.get("prompt")).toContain("Do not render any words, letters, numbers");
+    expect(body.get("prompt")).toContain("For an inspection step, use no motion arrow");
   });
 
   it("rejects malformed external responses without exposing them", async () => {

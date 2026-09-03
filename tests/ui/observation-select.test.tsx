@@ -52,7 +52,7 @@ describe("observation type select", () => {
       .mockResolvedValue({ ok: true });
     render(<RepairGuidance />);
 
-    const trigger = screen.getByRole("combobox", { name: "Observation type" });
+    const trigger = screen.getByRole("combobox", { name: "Kind of detail" });
     expect(trigger.tagName).toBe("BUTTON");
     expect(trigger).toHaveAttribute("data-slot", "select-trigger");
     expect(trigger).toHaveTextContent("Something I can see");
@@ -63,8 +63,8 @@ describe("observation type select", () => {
     await user.keyboard("[ArrowDown][Enter]");
     expect(trigger).toHaveTextContent("Something I tested");
 
-    await user.type(screen.getByRole("textbox", { name: "What do you observe?" }), "It wobbles.");
-    await user.click(screen.getByRole("button", { name: "Send answer to AI" }));
+    await user.type(screen.getByRole("textbox", { name: "What do you notice?" }), "It wobbles.");
+    await user.click(screen.getByRole("button", { name: "Use this detail" }));
 
     expect(workspaceStore.getState().answers[0]?.observation).toEqual({
       kind: "functional",
@@ -89,5 +89,20 @@ describe("observation type select", () => {
     });
     expect(nextQuestion).toHaveBeenCalledOnce();
     nextQuestion.mockRestore();
+  });
+
+  it("uses a direct fixing CTA when the photo check is complete", () => {
+    workspaceStore.setState({
+      questionStatus: "complete",
+      activeQuestionId: null,
+      questions: [],
+      answers: [],
+    });
+
+    render(<RepairGuidance />);
+
+    expect(screen.getByRole("heading", { name: "Let’s fix it step by step." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Let’s start fixing" })).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/interview/i);
   });
 });

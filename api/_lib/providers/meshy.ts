@@ -50,14 +50,14 @@ function upstreamStatusError(status: number): ApiError {
     return new ApiError(
       503,
       "UPSTREAM_UNAVAILABLE",
-      "The 3D provider has no generation credits left right now.",
+      "3D generation is temporarily unavailable. Please try again later.",
     );
   }
   if (status === 400) {
     return new ApiError(
       502,
       "MODEL_GENERATION_FAILED",
-      "The 3D provider rejected this photo. Try a clearer JPEG or PNG of the whole object.",
+      "This photo could not be used for 3D generation. Try a clearer JPEG or PNG of the whole object.",
     );
   }
   return new ApiError(

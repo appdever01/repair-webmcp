@@ -50,7 +50,7 @@ describe("workspace-aware agent availability", () => {
     ).toContain("explode_model");
   });
 
-  it("withholds plan drafting until the adaptive interview is complete", () => {
+  it("withholds plan drafting until the photo check is complete", () => {
     expect(
       selectAvailableAgentTools(snapshot({ analysisExists: true, questionStatus: "loading" })),
     ).not.toContain("draft_repair_plan");
