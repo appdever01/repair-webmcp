@@ -12,7 +12,7 @@ import { planWithOpenAI } from "../_lib/openai.js";
 import { professionalHelpPlan, requiresProfessionalHelp } from "../_lib/safety.js";
 import { assertSessionBindings, verifySessionToken } from "../_lib/token.js";
 
-export default function handler(request: Request): Promise<Response> {
+export function handler(request: Request): Promise<Response> {
   return handleApi(async () => {
     requireMethod(request, ["POST"]);
     requireSameOrigin(request);
@@ -26,3 +26,5 @@ export default function handler(request: Request): Promise<Response> {
     return jsonResponse({ plan });
   });
 }
+
+export default { fetch: handler };

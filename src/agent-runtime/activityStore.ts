@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { ModelContextEntryPoint } from "./modelContext";
 import type {
   AgentActivityEvent,
   AgentActivityStore,
@@ -14,10 +15,12 @@ interface MutableAgentActivityStore extends AgentActivityStore {
     toolManifest: readonly ToolManifestItem[],
     lastRegistrationError: string | null,
   ): void;
+  setEntryPoint(entryPoint: ModelContextEntryPoint | null): void;
 }
 
 const initialSnapshot: AgentActivityStoreSnapshot = {
   connectionState: "unsupported",
+  entryPoint: null,
   registeredToolCount: 0,
   toolManifest: [],
   lastRegistrationError: null,
@@ -58,6 +61,10 @@ export function createAgentActivityStore(): AgentActivityStore {
         toolManifest: [...toolManifest],
         lastRegistrationError,
       });
+    },
+    setEntryPoint(entryPoint) {
+      if (snapshot.entryPoint === entryPoint) return;
+      publish({ ...snapshot, entryPoint });
     },
   };
   return store;

@@ -10,15 +10,15 @@ Voice:
 
 > Show RE:PAIR one clear photo. It identifies the object, builds an interactive view when it can, and helps you choose a cautious next step without pretending a photo is a diagnosis.
 
-## 0:20–0:45 · Select and consent
+## 0:20–0:45 · Select and start
 
 Drop a photo of an everyday object with visible damage. If a suitable image is unavailable, select `Try the sample lamp`. Add one short problem description.
 
-Show the immediate local preview, replace/remove controls, processing disclosure, and disabled analysis action. Grant consent and start analysis.
+Show the immediate local preview and the replace/remove controls. Start the analysis.
 
 Voice:
 
-> The image stays local until I consent. The browser compresses it before sending it to OpenAI. RE:PAIR does not put uploads in browser storage.
+> The image stays local until I start the analysis. The browser compresses it before sending it to OpenAI. RE:PAIR does not put uploads in browser storage.
 
 ## 0:45–1:15 · Review understanding
 

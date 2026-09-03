@@ -6,7 +6,7 @@ RE:PAIR turns a photo of an everyday object into an accessible repair workspace 
 
 ## Full description
 
-Most people start a repair with an object and a phone photo, not a service manual. RE:PAIR meets them there. A person uploads a JPEG, PNG, or WebP image, sees an immediate local preview, adds optional context, and explicitly consents before external processing begins.
+Most people start a repair with an object and a phone photo, not a service manual. RE:PAIR meets them there. A person uploads a JPEG, PNG, or WebP image, sees an immediate local preview, adds optional context, and decides when external processing begins.
 
 OpenAI returns a strict analysis describing the likely object, visible condition, possible issues, uncertainty, repair hotspots, clarifying questions, stop conditions, and safety category. The person can correct the displayed object name without invalidating the server-signed analysis. When safe, the configured image-to-3D provider builds a GLB from a prepared reference. React Three Fiber provides orbit, zoom, reset, and keyboard-accessible camera alternatives.
 
@@ -16,7 +16,7 @@ Clarifying answers are entered only through explicit human controls. Repair guid
 
 RE:PAIR also makes WebMCP observable. An always-discoverable activity dock reports the number of available actions and shows each tool’s source, title, lifecycle, timestamp, elapsed time, redacted summaries, and resulting visible change. Real calls are labeled `Browser agent`; local scripted invocations are labeled `Guided demo`. Image base64, credentials, session tokens, signed provider URLs, and chain-of-thought are never displayed.
 
-The browser agent may read state, open the uploader, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, grant consent, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
+The browser agent may read state, open the uploader, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
 
 ## Architecture summary
 
@@ -29,7 +29,7 @@ The browser agent may read state, open the uploader, start or cancel a task, foc
 
 ## Human and agent contract
 
-The agent may understand, navigate, and draft. The person must select, consent, observe, approve, act, and verify.
+The agent may understand, navigate, and draft. The person must select, observe, approve, act, and verify.
 
 ## Safety statement
 

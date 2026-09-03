@@ -1238,8 +1238,36 @@ textarea::placeholder {
   font-size: 22px;
 }
 
+.activity-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 16px 0 0;
+  color: var(--mist-bright);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.activity-status::before {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--steel-bright);
+  content: "";
+}
+
+.activity-status[data-state="ready"]::before {
+  background: var(--signal);
+}
+
+.activity-status[data-state="error"]::before {
+  background: var(--fault);
+}
+
 .activity-intro {
-  margin: 14px 0 20px;
+  margin: 10px 0 20px;
   color: var(--mist);
   font-size: 11px;
   line-height: 1.5;

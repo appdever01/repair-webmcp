@@ -1,5 +1,6 @@
 import type { ZodType } from "zod";
 import { createAgentActivityStore, type MutableAgentActivityStore } from "./activityStore";
+import { type ModelContextEntryPoint, resolveModelContext } from "./modelContext";
 import {
   type AgentToolName,
   agentInputJsonSchema,
@@ -364,23 +365,44 @@ function userSafeRegistrationError(): string {
   return "WebMCP tools could not be registered.";
 }
 
+function executionSignal(options: WebMCP.ToolExecuteCallbackOptions | undefined): AbortSignal {
+  return options?.signal ?? new AbortController().signal;
+}
+
+function isDuplicateRegistration(error: unknown): boolean {
+  return (
+    typeof DOMException !== "undefined" &&
+    error instanceof DOMException &&
+    error.name === "InvalidStateError"
+  );
+}
+
+function detectEntryPoint(modelContext: WebMCP.ModelContext): ModelContextEntryPoint | null {
+  if (typeof document !== "undefined" && document.modelContext === modelContext) return "document";
+  if (typeof navigator !== "undefined" && navigator.modelContext === modelContext) {
+    return "navigator";
+  }
+  return null;
+}
+
 export function createAgentRuntime(
   controller: WorkspaceController,
-  modelContext: WebMCP.ModelContext | undefined = typeof document === "undefined"
-    ? undefined
-    : document.modelContext,
+  modelContext: WebMCP.ModelContext | undefined = resolveModelContext()?.modelContext,
 ): AgentRuntime {
   const activityStore = createAgentActivityStore();
   const mutableStore = activityStore as MutableAgentActivityStore;
-  let registrationController: AbortController | null = null;
+  const registrations = new Map<AgentToolName, AbortController>();
   let disposed = false;
   let refreshGeneration = 0;
   let observedStateVersion: number | null = null;
   let queue = Promise.resolve();
+  let inFlight = 0;
+  let refreshWanted = false;
+  let deferredRefresh: Promise<void> | null = null;
 
   const append = (event: AgentActivityEvent) => mutableStore.appendEvent(event);
 
-  const invoke = async (
+  const runInvocation = async (
     name: AgentToolName,
     rawInput: unknown,
     source: AgentActivitySource,
@@ -528,45 +550,78 @@ export function createAgentRuntime(
     }
   };
 
+  const invoke = async (
+    name: AgentToolName,
+    rawInput: unknown,
+    source: AgentActivitySource,
+    signal: AbortSignal,
+  ): Promise<unknown> => {
+    inFlight += 1;
+    try {
+      return await runInvocation(name, rawInput, source, signal);
+    } finally {
+      inFlight -= 1;
+      if (inFlight === 0 && refreshWanted) {
+        refreshWanted = false;
+        deferRefresh();
+      }
+    }
+  };
+
+  const toolDefinition = (name: AgentToolName): WebMCP.ModelContextTool => {
+    const metadata = agentToolMetadata[name];
+    return {
+      name,
+      title: metadata.title,
+      description: metadata.description,
+      inputSchema: agentInputJsonSchema(name),
+      annotations: {
+        readOnlyHint: metadata.classification === "read-only",
+        untrustedContentHint: metadata.untrustedContent,
+      },
+      execute: (input, options) => invoke(name, input, "webmcp", executionSignal(options)),
+    };
+  };
+
+  const registeredManifest = (): ToolManifestItem[] =>
+    [...registrations.keys()].map(agentToolManifestItem);
+
   const refresh = async (generation: number) => {
     if (disposed || !modelContext) return;
-    mutableStore.setRegistration("registering", [], null);
-    registrationController?.abort();
-    const nextController = new AbortController();
-    registrationController = nextController;
     try {
       const snapshot = controller.getSnapshot();
       snapshotVersion(snapshot);
       const names = selectAvailableAgentTools(snapshot);
+      const desired = new Set<AgentToolName>(names);
+      for (const [name, registration] of registrations) {
+        if (desired.has(name)) continue;
+        registrations.delete(name);
+        registration.abort();
+      }
+      const additions = names.filter((name) => !registrations.has(name));
+      if (additions.length > 0) {
+        mutableStore.setRegistration("registering", registeredManifest(), null);
+      }
       await Promise.all(
-        names.map((name) => {
-          const metadata = agentToolMetadata[name];
-          return modelContext.registerTool(
-            {
-              name,
-              title: metadata.title,
-              description: metadata.description,
-              inputSchema: agentInputJsonSchema(name),
-              annotations: {
-                readOnlyHint: metadata.classification === "read-only",
-                untrustedContentHint: metadata.untrustedContent,
-              },
-              execute: (input, options) => invoke(name, input, "webmcp", options.signal),
-            },
-            { signal: nextController.signal },
-          );
+        additions.map(async (name) => {
+          const registration = new AbortController();
+          registrations.set(name, registration);
+          try {
+            await modelContext.registerTool(toolDefinition(name), {
+              signal: registration.signal,
+            });
+          } catch (error) {
+            if (isDuplicateRegistration(error)) return;
+            registrations.delete(name);
+            throw error;
+          }
         }),
       );
-      if (disposed || generation !== refreshGeneration) {
-        nextController.abort();
-        return;
-      }
-      const manifest: ToolManifestItem[] = names.map(agentToolManifestItem);
-      mutableStore.setRegistration("ready", manifest, null);
+      if (disposed || generation !== refreshGeneration) return;
+      mutableStore.setRegistration("ready", names.map(agentToolManifestItem), null);
     } catch {
-      nextController.abort();
       if (!disposed && generation === refreshGeneration) {
-        mutableStore.setRegistration("error", [], userSafeRegistrationError());
+        mutableStore.setRegistration("error", registeredManifest(), userSafeRegistrationError());
       }
     }
   };
@@ -577,11 +632,37 @@ export function createAgentRuntime(
     queue = queue.then(() => refresh(generation));
   };
 
+  const deferRefresh = () => {
+    if (disposed || deferredRefresh) return;
+    deferredRefresh = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        deferredRefresh = null;
+        if (!disposed) scheduleRefresh();
+        resolve();
+      }, 0);
+    });
+  };
+
+  const requestRefresh = () => {
+    if (disposed) return;
+    if (inFlight > 0) {
+      refreshWanted = true;
+      return;
+    }
+    scheduleRefresh();
+  };
+
+  const abortAllRegistrations = () => {
+    for (const registration of registrations.values()) registration.abort();
+    registrations.clear();
+  };
+
   let unsubscribe: () => void = () => undefined;
   if (!modelContext || typeof modelContext.registerTool !== "function") {
     mutableStore.setRegistration("unsupported", [], null);
   } else {
     try {
+      mutableStore.setEntryPoint(detectEntryPoint(modelContext));
       observedStateVersion = snapshotVersion(controller.getSnapshot());
       mutableStore.setRegistration("registering", [], null);
       unsubscribe = controller.subscribe(() => {
@@ -590,9 +671,9 @@ export function createAgentRuntime(
           const currentVersion = snapshotVersion(controller.getSnapshot());
           if (currentVersion === observedStateVersion) return;
           observedStateVersion = currentVersion;
-          scheduleRefresh();
+          requestRefresh();
         } catch {
-          mutableStore.setRegistration("error", [], userSafeRegistrationError());
+          mutableStore.setRegistration("error", registeredManifest(), userSafeRegistrationError());
         }
       });
       scheduleRefresh();
@@ -616,14 +697,18 @@ export function createAgentRuntime(
       }
       return invoke(name, input, "demo", options.signal ?? new AbortController().signal);
     },
-    flush: () => queue,
+    async flush() {
+      while (deferredRefresh) await deferredRefresh;
+      await queue;
+    },
     async dispose() {
       if (disposed) return;
       disposed = true;
       unsubscribe();
-      registrationController?.abort();
+      abortAllRegistrations();
       await queue;
       mutableStore.setRegistration("unsupported", [], null);
+      mutableStore.setEntryPoint(null);
     },
   };
 }

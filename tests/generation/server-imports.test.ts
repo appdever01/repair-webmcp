@@ -22,3 +22,17 @@ describe("serverless module imports", () => {
     expect(invalidImports).toEqual([]);
   });
 });
+
+describe("serverless handler exports", () => {
+  it("exposes every route through the Vercel fetch web handler export", async () => {
+    const routes = await Promise.all([
+      import("../../api/object/analyze"),
+      import("../../api/object/model"),
+      import("../../api/object/plan"),
+    ]);
+    for (const route of routes) {
+      expect(typeof route.default.fetch).toBe("function");
+      expect(route.default.fetch).toBe(route.handler);
+    }
+  });
+});

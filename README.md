@@ -5,14 +5,14 @@
   <p><a href="https://repair-webmcp.vercel.app"><strong>Open RE:PAIR</strong></a> · <a href="./docs/demo-script.md">Demo script</a> · <a href="./docs/generation-pipeline.md">Generation pipeline</a></p>
 </div>
 
-RE:PAIR turns a photo of an everyday object into a shared repair workspace for a person and a browser agent. The person chooses the image, consents to external processing, corrects what the system understood, supplies real-world observations, and retains authority over every physical decision. The system provides visible hypotheses, synchronized hotspots, an optional generated 3D view, and cautious next-step guidance.
+RE:PAIR turns a photo of an everyday object into a shared repair workspace for a person and a browser agent. The person chooses the image, decides when it is sent for analysis, corrects what the system understood, supplies real-world observations, and retains authority over every physical decision. The system provides visible hypotheses, synchronized hotspots, an optional generated 3D view, and cautious next-step guidance.
 
 The sample lamp remains available as a fallback, but the product is no longer limited to one scripted object.
 
 ## Product flow
 
 1. Choose or drop a JPEG, PNG, or WebP image and optionally describe the problem.
-2. Review the local preview and explicitly consent before the image leaves the browser.
+2. Review the local preview. Nothing leaves the browser until the person starts the analysis.
 3. OpenAI returns structured identification, visible condition, possible issues, uncertainty, hotspots, questions, and a safety classification.
 4. The configured image-to-3D provider receives a clean reference and returns a GLB when generation succeeds.
 5. The person answers clarifying questions through visible controls.
@@ -55,7 +55,7 @@ sequenceDiagram
   participant OpenAI
   participant Provider as 3D provider
 
-  Person->>UI: Selects photo and grants consent
+  Person->>UI: Selects photo and starts analysis
   UI->>UI: Compresses and keeps a local fallback
   UI->>API: Analyze image
   API->>OpenAI: Structured visual analysis, store false
@@ -96,7 +96,7 @@ Analysis and repair causes are always presented as hypotheses. Guidance includes
 
 | Capability | Person | Browser agent |
 | --- | :---: | :---: |
-| Select and consent to send a local image | Yes | No |
+| Select a local image and send it for analysis | Yes | No |
 | Correct the displayed object name | Yes | No |
 | Focus a visible hotspot | Yes | Yes |
 | Make and record a physical observation | Yes | No |

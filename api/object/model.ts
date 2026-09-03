@@ -104,10 +104,12 @@ async function getGeneration(request: Request): Promise<Response> {
   return jsonResponse(response);
 }
 
-export default function handler(request: Request): Promise<Response> {
+export function handler(request: Request): Promise<Response> {
   return handleApi(async () => {
     requireMethod(request, ["GET", "POST"]);
     requireSameOrigin(request);
     return request.method === "POST" ? startGeneration(request) : getGeneration(request);
   });
 }
+
+export default { fetch: handler };

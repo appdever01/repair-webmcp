@@ -1,3 +1,5 @@
+import type { ModelContextEntryPoint } from "./modelContext";
+
 export type AgentConnectionState = "unsupported" | "registering" | "ready" | "error";
 
 export type AgentActivityPhase = "requested" | "running" | "succeeded" | "failed" | "cancelled";
@@ -133,6 +135,7 @@ export interface AgentActivityEvent {
 
 export interface AgentActivityStoreSnapshot {
   connectionState: AgentConnectionState;
+  entryPoint: ModelContextEntryPoint | null;
   registeredToolCount: number;
   toolManifest: readonly ToolManifestItem[];
   lastRegistrationError: string | null;

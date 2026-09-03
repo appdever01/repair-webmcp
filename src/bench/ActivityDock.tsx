@@ -17,6 +17,18 @@ function summaryEntries(summary: AgentActivityEvent["inputSummary"] | undefined)
   return summary ? Object.entries(summary).slice(0, 4) : [];
 }
 
+function connectionStatus(activity: ReturnType<typeof useAgentActivityStore>) {
+  if (activity.connectionState === "ready") {
+    const entry = activity.entryPoint ? `${activity.entryPoint}.modelContext` : "WebMCP";
+    return `Browser agent connected through ${entry}. ${activity.registeredToolCount} tools match the current step.`;
+  }
+  if (activity.connectionState === "registering") return "Registering WebMCP tools.";
+  if (activity.connectionState === "error") {
+    return activity.lastRegistrationError ?? "WebMCP tools could not be registered.";
+  }
+  return "This browser has no WebMCP. Every control here works by hand, and the guided preview shows what an agent would do.";
+}
+
 function visibleChange(event: AgentActivityEvent) {
   if (event.phase === "failed" || event.phase === "cancelled")
     return "No workspace change was kept.";
@@ -66,6 +78,9 @@ export function ActivityDock({ runtime }: { runtime: AgentRuntime }) {
             </button>
           )}
         </div>
+        <p className="activity-status" data-state={activity.connectionState}>
+          {connectionStatus(activity)}
+        </p>
         <p className="activity-intro">
           Browser-agent requests appear here. Guided demo actions are labeled separately.
         </p>

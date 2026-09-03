@@ -11,7 +11,7 @@ import { validateImage } from "../_lib/image.js";
 import { analyzeWithOpenAI } from "../_lib/openai.js";
 import { createSessionToken } from "../_lib/token.js";
 
-export default function handler(request: Request): Promise<Response> {
+export function handler(request: Request): Promise<Response> {
   return handleApi(async () => {
     requireMethod(request, ["POST"]);
     requireSameOrigin(request);
@@ -33,3 +33,5 @@ export default function handler(request: Request): Promise<Response> {
     return jsonResponse({ sessionToken, analysis });
   });
 }
+
+export default { fetch: handler };

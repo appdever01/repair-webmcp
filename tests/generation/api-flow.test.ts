@@ -1,6 +1,6 @@
-import analyzeHandler from "../../api/object/analyze";
-import modelHandler from "../../api/object/model";
-import planHandler from "../../api/object/plan";
+import { handler as analyzeHandler } from "../../api/object/analyze";
+import { handler as modelHandler } from "../../api/object/model";
+import { handler as planHandler } from "../../api/object/plan";
 import { objectAnalysis, pngImage } from "./fixtures";
 
 function request(path: string, init: RequestInit): Request {

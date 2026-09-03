@@ -1,4 +1,10 @@
 export { createAgentActivityStore, useAgentActivityStore } from "./activityStore";
+export type {
+  ModelContextEntryPoint,
+  ModelContextHost,
+  ResolvedModelContext,
+} from "./modelContext";
+export { resolveModelContext } from "./modelContext";
 export type { AgentRuntime } from "./runtime";
 export { createAgentRuntime, selectAvailableAgentTools } from "./runtime";
 export type { AgentToolName } from "./schemas";
