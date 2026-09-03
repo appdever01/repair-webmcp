@@ -67,7 +67,8 @@ sequenceDiagram
       UI->>API: Poll signed job
       API->>Provider: Read provider status
     end
-    Provider-->>UI: Validated GLB URL
+    Provider-->>API: Signed GLB link
+    API-->>UI: Same-origin model route
   end
   Agent->>UI: Focuses visible context or opens a human question
   Person->>UI: Supplies observation
