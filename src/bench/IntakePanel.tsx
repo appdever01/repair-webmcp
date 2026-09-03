@@ -113,11 +113,6 @@ export function IntakePanel() {
             {state.image ? (
               <div className="selected-preview">
                 <img src={state.image.previewUrl} alt="Selected object preview" />
-                <div>
-                  <RepairIcon name="check" />
-                  <strong>{state.image.name}</strong>
-                  <span>The image stays in this session until you choose to send it.</span>
-                </div>
               </div>
             ) : (
               <div className="upload-empty">
@@ -148,10 +143,18 @@ export function IntakePanel() {
           )}
           {state.image && (
             <div className="image-actions">
-              <button type="button" onClick={() => inputRef.current?.click()}>
+              <button
+                type="button"
+                className="replace-image-action"
+                onClick={() => inputRef.current?.click()}
+              >
                 <RepairIcon name="camera" /> Replace photo
               </button>
-              <button type="button" onClick={() => workspaceStore.getState().removeImage()}>
+              <button
+                type="button"
+                className="remove-image-action"
+                onClick={() => workspaceStore.getState().removeImage()}
+              >
                 <RepairIcon name="delete" /> Remove
               </button>
             </div>
@@ -171,34 +174,18 @@ export function IntakePanel() {
               }
             />
           </label>
-          {state.image && (
-            <div className="consent-block">
-              <label className="consent-control">
-                <input
-                  type="checkbox"
-                  checked={state.consentGranted}
-                  onChange={(event) =>
-                    workspaceStore.getState().setConsentGranted(event.currentTarget.checked)
-                  }
-                />
-                <span>
-                  I agree to send this image to OpenAI for analysis. It goes to the 3D provider only
-                  if I later choose to build a model.
-                </span>
-              </label>
-              <p>
-                RE:PAIR does not save the uploaded image to browser storage. Provider retention and
-                privacy terms apply.
-              </p>
-            </div>
-          )}
           <button
             type="button"
             className="primary-button"
-            disabled={!state.image || !state.consentGranted || state.isBusy}
+            disabled={!state.image || state.isBusy}
+            aria-busy={state.isBusy}
             onClick={() => void startAnalysis()}
           >
-            <RepairIcon name="inspect" />
+            {state.isBusy ? (
+              <span className="loading-spinner" aria-hidden="true" />
+            ) : (
+              <RepairIcon name="inspect" />
+            )}
             {state.isBusy ? "Understanding your photo" : "Understand this object"}
           </button>
           {state.isBusy && (

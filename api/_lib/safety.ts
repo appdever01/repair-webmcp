@@ -1,4 +1,4 @@
-import type { ObjectAnalysis, RepairPlan, SafetyCategory } from "../../src/generation/contracts";
+import type { ObjectAnalysis, RepairPlan, SafetyCategory } from "../../src/generation/contracts.js";
 
 const PROFESSIONAL_ONLY_CATEGORIES = new Set<SafetyCategory>([
   "mains_electricity",

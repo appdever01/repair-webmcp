@@ -1,7 +1,7 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import type { ObjectAnalysis } from "../../src/generation/contracts";
-import { ApiError } from "./errors";
+import type { ObjectAnalysis } from "../../src/generation/contracts.js";
+import { ApiError } from "./errors.js";
 
 const sessionPayloadSchema = z
   .object({

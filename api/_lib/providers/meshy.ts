@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { ApiError } from "../errors";
-import { fetchWithTimeout } from "../http";
+import { ApiError } from "../errors.js";
+import { fetchWithTimeout } from "../http.js";
 import type {
   ImageTo3dProvider,
   ProviderPollResult,
   ProviderStartInput,
   ProviderStartResult,
-} from "./types";
+} from "./types.js";
 
 const MESHY_BASE_URL = "https://api.meshy.ai/openapi/v1/image-to-3d";
 

@@ -1,9 +1,15 @@
-import { analyzeObjectRequestSchema } from "../../src/generation/contracts";
-import { getGenerationConfig } from "../_lib/config";
-import { handleApi, jsonResponse, readJson, requireMethod, requireSameOrigin } from "../_lib/http";
-import { validateImage } from "../_lib/image";
-import { analyzeWithOpenAI } from "../_lib/openai";
-import { createSessionToken } from "../_lib/token";
+import { analyzeObjectRequestSchema } from "../../src/generation/contracts.js";
+import { getGenerationConfig } from "../_lib/config.js";
+import {
+  handleApi,
+  jsonResponse,
+  readJson,
+  requireMethod,
+  requireSameOrigin,
+} from "../_lib/http.js";
+import { validateImage } from "../_lib/image.js";
+import { analyzeWithOpenAI } from "../_lib/openai.js";
+import { createSessionToken } from "../_lib/token.js";
 
 export default function handler(request: Request): Promise<Response> {
   return handleApi(async () => {

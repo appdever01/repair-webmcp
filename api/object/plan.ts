@@ -1,5 +1,5 @@
-import { draftRepairPlanBodySchema } from "../../src/generation/contracts";
-import { getGenerationConfig } from "../_lib/config";
+import { draftRepairPlanBodySchema } from "../../src/generation/contracts.js";
+import { getGenerationConfig } from "../_lib/config.js";
 import {
   handleApi,
   jsonResponse,
@@ -7,10 +7,10 @@ import {
   requireBearerToken,
   requireMethod,
   requireSameOrigin,
-} from "../_lib/http";
-import { planWithOpenAI } from "../_lib/openai";
-import { professionalHelpPlan, requiresProfessionalHelp } from "../_lib/safety";
-import { assertSessionBindings, verifySessionToken } from "../_lib/token";
+} from "../_lib/http.js";
+import { planWithOpenAI } from "../_lib/openai.js";
+import { professionalHelpPlan, requiresProfessionalHelp } from "../_lib/safety.js";
+import { assertSessionBindings, verifySessionToken } from "../_lib/token.js";
 
 export default function handler(request: Request): Promise<Response> {
   return handleApi(async () => {

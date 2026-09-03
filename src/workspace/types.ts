@@ -50,7 +50,6 @@ export interface WorkspaceState {
   originalFile: File | null;
   compressedImage: CompressedImage | null;
   problemDescription: string;
-  consentGranted: boolean;
   analysis: ObjectAnalysis | null;
   objectNameCorrection: string;
   sessionToken: string | null;

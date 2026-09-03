@@ -1,8 +1,8 @@
-import type { GenerationConfig } from "../config";
-import { ApiError } from "../errors";
-import { MeshyProvider } from "./meshy";
-import { MockProvider } from "./mock";
-import type { ImageTo3dProvider } from "./types";
+import type { GenerationConfig } from "../config.js";
+import { ApiError } from "../errors.js";
+import { MeshyProvider } from "./meshy.js";
+import { MockProvider } from "./mock.js";
+import type { ImageTo3dProvider } from "./types.js";
 
 export function createImageTo3dProvider(
   config: GenerationConfig,
@@ -20,4 +20,4 @@ export function createImageTo3dProvider(
   return new MeshyProvider(config.meshyApiKey, config.providerTimeoutMs);
 }
 
-export type { ImageTo3dProvider } from "./types";
+export type { ImageTo3dProvider } from "./types.js";

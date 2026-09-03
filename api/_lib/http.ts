@@ -1,5 +1,5 @@
 import type { ZodType } from "zod";
-import { ApiError, toApiError } from "./errors";
+import { ApiError, toApiError } from "./errors.js";
 
 const MAX_JSON_BODY_BYTES = 4_300_000;
 

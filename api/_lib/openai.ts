@@ -5,11 +5,11 @@ import {
   objectAnalysisSchema,
   type RepairPlan,
   repairPlanSchema,
-} from "../../src/generation/contracts";
-import type { GenerationConfig } from "./config";
-import { ApiError } from "./errors";
-import { fetchWithTimeout } from "./http";
-import { type ValidatedImage, validateImage } from "./image";
+} from "../../src/generation/contracts.js";
+import type { GenerationConfig } from "./config.js";
+import { ApiError } from "./errors.js";
+import { fetchWithTimeout } from "./http.js";
+import { type ValidatedImage, validateImage } from "./image.js";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_IMAGE_EDITS_URL = "https://api.openai.com/v1/images/edits";

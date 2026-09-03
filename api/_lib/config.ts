@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError } from "./errors";
+import { ApiError } from "./errors.js";
 
 const positiveIntegerSchema = z.coerce.number().int().positive();
 

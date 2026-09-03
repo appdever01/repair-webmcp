@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { CompressedImage, ImageMediaType } from "../../src/generation/contracts";
-import { ApiError } from "./errors";
+import type { CompressedImage, ImageMediaType } from "../../src/generation/contracts.js";
+import { ApiError } from "./errors.js";
 
 export const MAX_IMAGE_BYTES = 3_000_000;
 const MAX_DIMENSION = 16_384;

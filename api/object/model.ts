@@ -2,9 +2,9 @@ import {
   type GenerationStatus,
   getModelGenerationResponseSchema,
   startModelGenerationBodySchema,
-} from "../../src/generation/contracts";
-import { getGenerationConfig } from "../_lib/config";
-import { ApiError } from "../_lib/errors";
+} from "../../src/generation/contracts.js";
+import { getGenerationConfig } from "../_lib/config.js";
+import { ApiError } from "../_lib/errors.js";
 import {
   handleApi,
   jsonResponse,
@@ -12,16 +12,16 @@ import {
   requireBearerToken,
   requireMethod,
   requireSameOrigin,
-} from "../_lib/http";
-import { validateImage } from "../_lib/image";
-import { normalizeReferenceImage } from "../_lib/openai";
-import { createImageTo3dProvider } from "../_lib/providers";
+} from "../_lib/http.js";
+import { validateImage } from "../_lib/image.js";
+import { normalizeReferenceImage } from "../_lib/openai.js";
+import { createImageTo3dProvider } from "../_lib/providers/index.js";
 import {
   assertSessionBindings,
   createJobToken,
   verifyJobToken,
   verifySessionToken,
-} from "../_lib/token";
+} from "../_lib/token.js";
 
 function statusMessage(status: GenerationStatus): string {
   if (status === "queued") {

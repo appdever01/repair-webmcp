@@ -25,7 +25,6 @@ export interface WorkspaceActions {
   selectImage(file: File): string | null;
   removeImage(): void;
   setProblemDescription(value: string): void;
-  setConsentGranted(value: boolean): void;
   setObjectNameCorrection(value: string): void;
   setVisualMode(mode: WorkspaceVisualMode): void;
   setModelError(message: string): void;
@@ -57,7 +56,6 @@ const initialState: WorkspaceState = {
   originalFile: null,
   compressedImage: null,
   problemDescription: "",
-  consentGranted: false,
   analysis: null,
   objectNameCorrection: "",
   sessionToken: null,
@@ -304,9 +302,6 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
       setProblemDescription(value) {
         commit({ problemDescription: value.slice(0, 2_000) });
       },
-      setConsentGranted(value) {
-        commit({ consentGranted: value });
-      },
       setObjectNameCorrection(value) {
         commit({
           objectNameCorrection: value.slice(0, 160),
@@ -370,7 +365,6 @@ export function createWorkspaceStore(services: WorkspaceServices = defaultWorksp
         if (!state.image || (!state.originalFile && !state.compressedImage) || state.isBusy) {
           return { ok: false, code: "ACTION_NOT_AVAILABLE" };
         }
-        if (!state.consentGranted) return { ok: false, code: "HUMAN_ACTION_REQUIRED" };
         const task = beginTask(options.signal);
         commit({
           stage: "uploading",

@@ -2,7 +2,7 @@ import type {
   GeneratedModel,
   GenerationError,
   GenerationStatus,
-} from "../../../src/generation/contracts";
+} from "../../../src/generation/contracts.js";
 
 export interface ProviderStartInput {
   imageDataUrl: string;

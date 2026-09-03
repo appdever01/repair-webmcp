@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../../src/app/App";
 import type { ObjectAnalysis, RepairPlan } from "../../src/generation/contracts";
@@ -91,10 +91,13 @@ describe("upload-first manual experience", () => {
       "src",
       "blob:local-preview",
     );
-    expect(screen.getByText("clipboard.png")).toBeInTheDocument();
+    expect(screen.queryByText("clipboard.png")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("The image stays in this session until you choose to send it."),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows a local preview, gates analysis on consent, and removes image memory", async () => {
+  it("shows a local preview with clear photo actions and removes image memory", async () => {
     const user = userEvent.setup();
     render(<App />);
     const input = screen.getByLabelText(/Choose a photo/);
@@ -105,19 +108,33 @@ describe("upload-first manual experience", () => {
       "src",
       "blob:local-preview",
     );
-    expect(screen.getByRole("button", { name: "Understand this object" })).toBeDisabled();
-    await user.click(
-      screen.getByRole("checkbox", {
-        name: /send this image to OpenAI for analysis/i,
-      }),
-    );
     expect(screen.getByRole("button", { name: "Understand this object" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Replace photo" })).toHaveClass(
+      "replace-image-action",
+    );
+    expect(screen.getByRole("button", { name: "Remove" })).toHaveClass("remove-image-action");
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove" }));
 
     expect(screen.queryByAltText("Selected object preview")).not.toBeInTheDocument();
     expect(workspaceStore.getState().originalFile).toBeNull();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:local-preview");
+  });
+
+  it("shows a loading spinner while the photo is being understood", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.upload(
+      screen.getByLabelText(/Choose a photo/),
+      new File(["photo"], "toaster.jpg", { type: "image/jpeg" }),
+    );
+
+    act(() => workspaceStore.setState({ isBusy: true, stage: "uploading" }));
+
+    const button = screen.getByRole("button", { name: "Understanding your photo" });
+    expect(button).toHaveAttribute("aria-busy", "true");
+    expect(button.querySelector(".loading-spinner")).toBeInTheDocument();
   });
 
   it("keeps repair questions ahead of optional 3D generation", async () => {

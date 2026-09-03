@@ -135,17 +135,11 @@ describe("dynamic workspace action layer", () => {
     expect(URL.revokeObjectURL).toHaveBeenCalled();
   });
 
-  it("requires human consent before analysis and preserves the signed analysis after a name correction", async () => {
+  it("analyzes a selected image and preserves the signed analysis after a name correction", async () => {
     const mocked = services();
     const store = createWorkspaceStore(mocked);
     store.getState().selectImage(photo());
 
-    await expect(
-      store.getState().analyzeUploadedObject(humanActionOptions(store)),
-    ).resolves.toEqual({ ok: false, code: "HUMAN_ACTION_REQUIRED" });
-    expect(mocked.analyzeObject).not.toHaveBeenCalled();
-
-    store.getState().setConsentGranted(true);
     await expect(
       store.getState().analyzeUploadedObject(humanActionOptions(store)),
     ).resolves.toEqual({ ok: true });
@@ -164,7 +158,6 @@ describe("dynamic workspace action layer", () => {
       services({ analyzeError: new Error("Analysis is unavailable.") }),
     );
     store.getState().selectImage(photo());
-    store.getState().setConsentGranted(true);
 
     await expect(
       store.getState().analyzeUploadedObject(humanActionOptions(store)),
@@ -201,7 +194,6 @@ describe("dynamic workspace action layer", () => {
     });
     const store = createWorkspaceStore(mocked);
     store.getState().selectImage(photo());
-    store.getState().setConsentGranted(true);
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
     await store.getState().start3DGeneration(humanActionOptions(store));
     await vi.waitFor(() => expect(store.getState().generationStatus).toBe("failed"));
@@ -227,7 +219,6 @@ describe("dynamic workspace action layer", () => {
     );
     const store = createWorkspaceStore(services({ wait }));
     store.getState().selectImage(photo());
-    store.getState().setConsentGranted(true);
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
     await store.getState().start3DGeneration(humanActionOptions(store));
 
@@ -254,7 +245,6 @@ describe("dynamic workspace action layer", () => {
     });
     const store = createWorkspaceStore(mocked);
     store.getState().selectImage(photo());
-    store.getState().setConsentGranted(true);
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
     expect(store.getState().focusHotspot("guard-fastener", humanActionOptions(store))).toEqual({
       ok: true,
@@ -293,7 +283,6 @@ describe("dynamic workspace action layer", () => {
       }),
     );
     store.getState().selectImage(photo());
-    store.getState().setConsentGranted(true);
     await store.getState().analyzeUploadedObject(humanActionOptions(store));
 
     expect(store.getState().stage).toBe("safety-stop");

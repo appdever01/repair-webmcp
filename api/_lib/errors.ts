@@ -1,5 +1,5 @@
 import { ZodError } from "zod";
-import type { GenerationErrorCode } from "../../src/generation/contracts";
+import type { GenerationErrorCode } from "../../src/generation/contracts.js";
 
 export class ApiError extends Error {
   readonly status: number;

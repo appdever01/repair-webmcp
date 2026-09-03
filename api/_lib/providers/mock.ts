@@ -4,7 +4,7 @@ import type {
   ProviderPollResult,
   ProviderStartInput,
   ProviderStartResult,
-} from "./types";
+} from "./types.js";
 
 const EMPTY_GLB = "data:model/gltf-binary;base64,Z2xURgIAAAAYAAAABAAAAEpTT057fSAg";
 
