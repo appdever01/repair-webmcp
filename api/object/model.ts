@@ -1,4 +1,5 @@
 import {
+  type GeneratedModel,
   type GenerationStatus,
   getModelGenerationResponseSchema,
   startModelGenerationBodySchema,
@@ -98,10 +99,17 @@ async function getGeneration(request: Request): Promise<Response> {
     status: result.status,
     progress: result.progress,
     message: statusMessage(result.status),
-    model: result.model,
+    model: result.model ? sameOriginModel(jobId, result.model) : null,
     error: result.error,
   });
   return jsonResponse(response);
+}
+
+function sameOriginModel(jobId: string, model: GeneratedModel): GeneratedModel {
+  if (!model.glbUrl.startsWith("https://")) {
+    return model;
+  }
+  return { ...model, glbUrl: `/api/object/asset?jobId=${encodeURIComponent(jobId)}` };
 }
 
 export function handler(request: Request): Promise<Response> {

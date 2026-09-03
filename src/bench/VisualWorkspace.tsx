@@ -1,5 +1,6 @@
 import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import { RepairIcon } from "../design/RepairIcon";
+import { modelRequestHeaders } from "../scene/modelRequest";
 import { supportsWebGL } from "../scene/quality";
 import type { SceneCommand } from "../scene/RepairScene";
 import { humanActionOptions, useWorkspaceStore, workspaceStore } from "../workspace";
@@ -111,7 +112,12 @@ export function VisualWorkspace() {
                 </div>
               }
             >
-              <RepairScene modelUrl={state.model.glbUrl} command={command} exploded={exploded} />
+              <RepairScene
+                modelUrl={state.model.glbUrl}
+                command={command}
+                exploded={exploded}
+                requestHeaders={modelRequestHeaders(state.model.glbUrl, state.sessionToken)}
+              />
             </Suspense>
           </ModelBoundary>
         ) : state.image ? (

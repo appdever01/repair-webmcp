@@ -148,9 +148,12 @@ export const generationErrorSchema = z
 
 const httpsUrlSchema = z.url().refine((value) => value.startsWith("https://"));
 
+export const MODEL_ASSET_PATH = "/api/object/asset";
+
 const glbUrlSchema = z.union([
   httpsUrlSchema,
   z.string().regex(/^data:model\/gltf-binary;base64,[A-Za-z0-9+/]+={0,2}$/),
+  z.string().regex(/^\/api\/object\/asset\?jobId=[A-Za-z0-9_.-]{32,4096}$/),
 ]);
 
 export const generatedModelSchema = z

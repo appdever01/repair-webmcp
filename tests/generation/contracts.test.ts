@@ -60,3 +60,29 @@ describe("generation schemas", () => {
     ).toBe(false);
   });
 });
+
+describe("same-origin model asset locations", () => {
+  const response = (glbUrl: string) => ({
+    jobId: "j".repeat(32),
+    status: "succeeded",
+    progress: 100,
+    message: "Ready.",
+    model: { glbUrl, posterUrl: null },
+    error: null,
+  });
+
+  it("accepts the asset route with a job token and rejects other relative paths", () => {
+    expect(
+      getModelGenerationResponseSchema.safeParse(
+        response(`/api/object/asset?jobId=${"a".repeat(40)}`),
+      ).success,
+    ).toBe(true);
+    expect(
+      getModelGenerationResponseSchema.safeParse(response("/api/object/model?jobId=x")).success,
+    ).toBe(false);
+    expect(getModelGenerationResponseSchema.safeParse(response("/etc/passwd")).success).toBe(false);
+    expect(
+      getModelGenerationResponseSchema.safeParse(response("//attacker.example/model.glb")).success,
+    ).toBe(false);
+  });
+});

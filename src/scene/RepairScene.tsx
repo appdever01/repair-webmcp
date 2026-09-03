@@ -17,8 +17,18 @@ export interface SceneCommand {
   type: "rotate-left" | "rotate-right" | "zoom-in" | "zoom-out" | "reset";
 }
 
-function GeneratedModel({ modelUrl, exploded }: { modelUrl: string; exploded: boolean }) {
-  const gltf = useGLTF(modelUrl);
+function GeneratedModel({
+  modelUrl,
+  exploded,
+  requestHeaders,
+}: {
+  modelUrl: string;
+  exploded: boolean;
+  requestHeaders: Record<string, string>;
+}) {
+  const gltf = useGLTF(modelUrl, undefined, undefined, (loader) =>
+    loader.setRequestHeader(requestHeaders),
+  );
   const prepared = useMemo(() => prepareExplodableScene(gltf.scene.clone(true)), [gltf.scene]);
   const progress = useRef(0);
   const invalidate = useThree((state) => state.invalidate);
@@ -101,10 +111,12 @@ export function RepairScene({
   modelUrl,
   command,
   exploded,
+  requestHeaders = {},
 }: {
   modelUrl: string;
   command: SceneCommand;
   exploded: boolean;
+  requestHeaders?: Record<string, string>;
 }) {
   const tier = getQualityTier();
   const [dpr, setDpr] = useState(() => getDpr(tier));
@@ -137,7 +149,7 @@ export function RepairScene({
       />
       <directionalLight position={[6, 4, -2]} intensity={1.4} color="#a9c0eb" />
       <spotLight position={[0, 7, -7]} intensity={8} angle={0.5} penumbra={0.8} color="#e8eee8" />
-      <GeneratedModel modelUrl={modelUrl} exploded={exploded} />
+      <GeneratedModel modelUrl={modelUrl} exploded={exploded} requestHeaders={requestHeaders} />
       <ContactShadows
         position={[0, -1.2, 0]}
         opacity={0.28}

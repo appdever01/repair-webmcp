@@ -27,6 +27,7 @@ describe("serverless handler exports", () => {
   it("exposes every route through the Vercel fetch web handler export", async () => {
     const routes = await Promise.all([
       import("../../api/object/analyze"),
+      import("../../api/object/asset"),
       import("../../api/object/model"),
       import("../../api/object/plan"),
     ]);

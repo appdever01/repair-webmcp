@@ -119,9 +119,13 @@ controls](https://developers.openai.com/api/docs/guides/your-data) and Meshy's t
 account configuration.
 
 The application does not log base64 data, prompts, bearer tokens, secrets, provider responses, or
-signed asset URLs. Meshy GLB and poster URLs are validated HTTPS URLs and can be time-limited signed
-links. Poll again if an asset link expires. Provider credentials and raw responses never reach the
-browser.
+signed asset URLs. Meshy's asset CDN does not send CORS headers, so the browser never fetches a
+provider GLB directly. `GET /api/object/model` rewrites a finished model to
+`/api/object/asset?jobId=...`, and `GET /api/object/asset` verifies the session and job tokens,
+re-reads the task from Meshy for a fresh signed link, and streams the GLB from this origin with
+`Content-Type: model/gltf-binary` and private caching. The scene sends the session token in the
+`Authorization` header only for that same-origin path. Provider credentials, raw responses, and
+signed provider URLs never reach the browser.
 
 Same-origin checks require an exact `Origin` match or a browser `Sec-Fetch-Site: same-origin`
 header.

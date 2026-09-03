@@ -18,7 +18,7 @@ The sample lamp remains available as a fallback, but the product is no longer li
 5. The person answers clarifying questions through visible controls.
 6. OpenAI drafts cautious guidance. High-risk objects stop on a deterministic professional-help path.
 
-The canvas is an enhancement. The uploaded photo, hotspot buttons, semantic hotspot list, questions, and repair guidance remain usable if generation fails, a signed model URL expires, WebGL is unavailable, or remote CORS policy blocks the GLB.
+The canvas is an enhancement. The uploaded photo, hotspot buttons, semantic hotspot list, questions, and repair guidance remain usable if generation fails, a model link expires, or WebGL is unavailable. Finished models are streamed through a same-origin, session-authorized route because the provider CDN does not send CORS headers.
 
 ## Architecture
 
@@ -176,7 +176,7 @@ Performance budgets remain 150 KB gzip for the initial application, 450 KB gzip 
 ## Project map
 
 ```text
-api/object/          Stateless analyze, model, and plan routes
+api/object/          Stateless analyze, model, asset, and plan routes
 src/agent-runtime/   Observable and redacted WebMCP runtime
 src/generation/      Typed client and public generation contracts
 src/workspace/       Session store, shared actions, controller, and selectors
