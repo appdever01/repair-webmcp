@@ -57,7 +57,24 @@ describe("upload-first manual experience", () => {
     expect(screen.getByRole("heading", { name: "One photo. A clearer fix." })).toBeInTheDocument();
     expect(screen.queryByText("Manual mode")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Agent activity/ })).toHaveTextContent("0 actions");
-    expect(screen.getByRole("button", { name: "Try the sample lamp" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "broken cup" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "desk lamp" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Four short steps. You stay in charge." }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "The same workspace, exposed as WebMCP tools." }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("get_workspace_state")).toBeInTheDocument();
+    expect(screen.getByText("draft_repair_plan")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "A live agent session in a few minutes." }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Source on GitHub" })).toHaveAttribute(
+      "href",
+      "https://github.com/appdever01/repair-webmcp",
+    );
+    expect(screen.getByText(/Your photo stays on this device until you start/)).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "The things you actually use." }),
     ).toBeInTheDocument();

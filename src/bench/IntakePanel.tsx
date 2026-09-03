@@ -6,6 +6,23 @@ import {
   validateImageFile,
   workspaceStore,
 } from "../workspace";
+import {
+  AgentGuide,
+  AgentSection,
+  HowItWorks,
+  ObjectShowcase,
+  SiteFooter,
+} from "./LandingSections";
+
+const sampleObjects = [
+  {
+    label: "broken cup",
+    path: "/sample-broken-cup.jpg",
+    name: "sample-broken-cup.jpg",
+    type: "image/jpeg",
+  },
+  { label: "desk lamp", path: "/fallback-lamp.webp", name: "sample-lamp.webp", type: "image/webp" },
+] as const;
 
 export function IntakePanel() {
   const state = useWorkspaceStore((current) => current);
@@ -59,12 +76,12 @@ export function IntakePanel() {
     acceptFile(event.dataTransfer.files[0]);
   };
 
-  const selectSample = async () => {
+  const selectSample = async (sample: (typeof sampleObjects)[number]) => {
     try {
-      const response = await fetch("/fallback-lamp.webp");
+      const response = await fetch(sample.path);
       if (!response.ok) throw new Error();
       const blob = await response.blob();
-      acceptFile(new File([blob], "sample-lamp.webp", { type: "image/webp" }));
+      acceptFile(new File([blob], sample.name, { type: sample.type }));
     } catch {
       setSelectionError("The sample image could not be loaded. Choose a photo instead.");
     }
@@ -199,55 +216,31 @@ export function IntakePanel() {
               <RepairIcon name="stop" /> Cancel
             </button>
           )}
+          <p className="upload-disclosure">
+            <RepairIcon name="shield" size={14} />
+            <span>
+              Your photo stays on this device until you start. It is then sent to OpenAI for
+              analysis, and to the 3D provider only if you build a model. Nothing is kept in browser
+              storage.
+            </span>
+          </p>
           <div className="sample-action">
-            <span>Don’t have a photo ready?</span>
-            <button type="button" onClick={() => void selectSample()}>
-              Try the sample lamp
-            </button>
+            <span>Don’t have a photo ready? Try a sample:</span>
+            <span className="sample-action-group">
+              {sampleObjects.map((sample) => (
+                <button key={sample.path} type="button" onClick={() => void selectSample(sample)}>
+                  {sample.label}
+                </button>
+              ))}
+            </span>
           </div>
         </div>
       </section>
-      <section className="object-showcase" aria-labelledby="object-showcase-title">
-        <div className="object-showcase-heading">
-          <p className="eyebrow">Built for everyday objects</p>
-          <h2 id="object-showcase-title">The things you actually use.</h2>
-        </div>
-        <div className="object-stage">
-          <figure className="repair-object repair-object-phone">
-            <img
-              src="/repair-phone.png"
-              alt="A phone with a cracked screen and loose charging port highlighted."
-              width="488"
-              height="760"
-              loading="lazy"
-              decoding="async"
-            />
-            <figcaption>Cracked screen</figcaption>
-          </figure>
-          <figure className="repair-object repair-object-sneaker">
-            <img
-              src="/repair-sneaker.png"
-              alt="A sneaker with a peeling sole highlighted and its layers separated."
-              width="760"
-              height="461"
-              loading="lazy"
-              decoding="async"
-            />
-            <figcaption>Peeling sole</figcaption>
-          </figure>
-          <figure className="repair-object repair-object-bike">
-            <img
-              src="/repair-bike.png"
-              alt="A bicycle with its slipped chain and rear gear highlighted."
-              width="760"
-              height="452"
-              loading="lazy"
-              decoding="async"
-            />
-            <figcaption>Slipped chain</figcaption>
-          </figure>
-        </div>
-      </section>
+      <HowItWorks />
+      <ObjectShowcase />
+      <AgentSection />
+      <AgentGuide />
+      <SiteFooter />
     </div>
   );
 }
