@@ -12,7 +12,7 @@ Voice:
 
 ## 0:20–0:45 · Select and start
 
-Drop a photo of an everyday object with visible damage. If a suitable image is unavailable, select `Try the sample lamp`. Add one short problem description.
+Drop a photo of an everyday object with visible damage. If a suitable image is unavailable, choose the `broken cup` or `desk lamp` sample. Add one short problem description.
 
 Show the immediate local preview and the replace/remove controls. Start the analysis.
 
