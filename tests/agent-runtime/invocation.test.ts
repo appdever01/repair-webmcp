@@ -59,7 +59,7 @@ describe("observable agent tool invocation", () => {
       ok: true,
       source: "webmcp",
       stateVersion: 1,
-      summary: expect.stringContaining("person must choose"),
+      summary: expect.stringContaining("Opened the image picker"),
       affectedTarget: { kind: "uploader", id: "image-uploader" },
     });
     expect(controller.getSnapshot().imageSelected).toBe(false);

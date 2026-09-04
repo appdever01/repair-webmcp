@@ -18,7 +18,7 @@ The landing page explains the contract before anyone uploads: a four-step overvi
 
 RE:PAIR also makes WebMCP observable. An always-discoverable activity dock reports the number of available actions and shows each tool’s source, title, lifecycle, timestamp, elapsed time, redacted summaries, and resulting visible change. Real calls are labeled `Browser agent`; local scripted invocations are labeled `Guided demo`. Image base64, credentials, session tokens, signed provider URLs, and chain-of-thought are never displayed.
 
-The browser agent may read state, open the uploader, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
+The browser agent may read state, open the image picker, start or cancel a task, focus a hotspot, open a human question, and draft guidance. It cannot choose a local file, make a physical observation, approve a repair, or mark physical work complete. Manual mode uses the same shared action layer and remains fully functional without WebMCP.
 
 ## Architecture summary
 

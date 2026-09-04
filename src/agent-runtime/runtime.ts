@@ -50,7 +50,7 @@ const errorMessages: Record<WorkspaceActionErrorCode, string> = {
 
 const successMessages: Record<AgentToolName, string> = {
   get_workspace_state: "Read the current visible workspace state.",
-  open_image_uploader: "Opened the uploader. The person must choose the local image.",
+  open_image_uploader: "Opened the image picker. The person must choose the local image.",
   analyze_uploaded_object: "Started analysis of the person-selected image.",
   start_3d_generation: "Started the 3D generation task.",
   get_generation_status: "Refreshed the visible generation status.",

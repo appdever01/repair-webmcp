@@ -236,6 +236,8 @@ function restoredWorkspaceState(record: PersistedWorkspaceRecord): WorkspaceStat
     repairStepVisuals: saved.repairStepVisuals.map((visual) =>
       visual.status === "generating" ? { ...visual, status: "idle" } : visual,
     ),
+    uploaderFocusRequest: 0,
+    uploaderPromptVisible: false,
     isBusy: false,
     announcement: saved.analysis ? "Your repair workspace was restored." : saved.announcement,
   };
@@ -1021,8 +1023,7 @@ export function createWorkspaceStore(
         commit({
           uploaderFocusRequest: get().uploaderFocusRequest + 1,
           uploaderPromptVisible: true,
-          announcement:
-            "Choose a photo in the highlighted upload area. Assistance cannot choose a local file.",
+          announcement: "The image picker is open. Choose a photo to continue.",
           reversibleActivity: reversible("Opened the image uploader", previous),
         });
         return { ok: true };

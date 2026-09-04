@@ -61,7 +61,7 @@ export const agentToolMetadata: Record<AgentToolName, AgentToolMetadata> = {
   },
   open_image_uploader: {
     title: "Open image uploader",
-    description: "Focus the image uploader so the person can choose a local image.",
+    description: "Open the image picker so the person can choose a local image.",
     classification: "mutation",
     untrustedContent: false,
   },

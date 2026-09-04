@@ -95,6 +95,8 @@ describe("workspace persistence", () => {
       activeRepairStepIndex: 1,
       visualMode: "guide",
       guidePageOpen: true,
+      uploaderFocusRequest: 1,
+      uploaderPromptVisible: true,
       assistantMessages: [
         { role: "user", content: "Can I use this tool?" },
         { role: "assistant", content: "Use it only if it matches the visible fastener." },
@@ -114,6 +116,8 @@ describe("workspace persistence", () => {
       activeRepairStepIndex: 1,
       visualMode: "guide",
       guidePageOpen: true,
+      uploaderFocusRequest: 0,
+      uploaderPromptVisible: false,
       assistantMessages: [
         { role: "user", content: "Can I use this tool?" },
         { role: "assistant", content: "Use it only if it matches the visible fastener." },

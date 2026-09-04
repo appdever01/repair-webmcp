@@ -165,7 +165,8 @@ export function IntakePanel() {
             </button>
             {state.uploaderPromptVisible && (
               <p className="agent-prompt-note">
-                <RepairIcon name="agent" /> Assistance opened this area. Choose the image yourself.
+                <RepairIcon name="agent" /> Assistance opened the image picker. Choose the image
+                yourself.
               </p>
             )}
             {selectionError && (
