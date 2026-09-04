@@ -1,7 +1,8 @@
+import { validateImage } from "../../api/_lib/image";
 import { createJobToken, createSessionToken, verifySessionToken } from "../../api/_lib/token";
 import { handler as assetHandler } from "../../api/object/asset";
 import { handler as modelHandler } from "../../api/object/model";
-import { objectAnalysis } from "./fixtures";
+import { jpegImage, objectAnalysis } from "./fixtures";
 
 const SECRET = "a-production-length-secret-that-is-at-least-32-bytes";
 
@@ -58,6 +59,35 @@ describe("same-origin model asset route", () => {
       status: "succeeded",
       model: { glbUrl: `/api/object/asset?jobId=${encodeURIComponent(jobId)}`, posterUrl: null },
     });
+  });
+
+  it("falls back to the original JPEG when reference preparation is unavailable", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "openai-key");
+    vi.stubEnv("OPENAI_IMAGE_MODEL", "gpt-image-2");
+    const image = jpegImage(1200, 800);
+    const analysis = objectAnalysis();
+    const sessionToken = createSessionToken(validateImage(image).sha256, analysis, SECRET, 600);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response("{}", { status: 429 }))
+      .mockResolvedValueOnce(Response.json({ result: "task-fast-fallback" }));
+
+    const response = await modelHandler(
+      new Request("https://repair.example/api/object/model", {
+        method: "POST",
+        headers: {
+          Origin: "https://repair.example",
+          Authorization: `Bearer ${sessionToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image, analysis, normalizeImage: true }),
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toMatchObject({ status: "queued" });
+    const providerBody = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    expect(providerBody.image_url).toBe(`data:image/jpeg;base64,${image.base64}`);
   });
 
   it("streams the provider GLB from this origin for the bound session", async () => {

@@ -242,7 +242,7 @@ describe("OpenAI generation adapters", () => {
       throw new Error("Expected an image edit FormData request");
     }
     expect(body.get("model")).toBe("configured-image-model");
-    expect(body.get("quality")).toBe("high");
+    expect(body.get("quality")).toBe("medium");
     expect(body.get("output_format")).toBe("png");
     expect(body.get("prompt")).toContain("Keep every detached piece detached");
     expect(body.get("prompt")).toContain("Do not repair, reconnect, complete");

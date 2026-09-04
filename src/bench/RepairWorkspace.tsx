@@ -45,10 +45,15 @@ export function RepairWorkspace() {
               }
               workspaceStore.getState().setVisualMode("model");
               const next = workspaceStore.getState();
+              if (next.model && next.modelError) {
+                next.setModelError(null);
+                return;
+              }
               if (
                 supportsWebGL() &&
                 !next.isBusy &&
-                (["idle", "failed", "cancelled"].includes(next.generationStatus) || next.modelError)
+                !next.model &&
+                ["idle", "failed", "cancelled"].includes(next.generationStatus)
               ) {
                 void next.start3DGeneration(humanActionOptions(workspaceStore));
               }

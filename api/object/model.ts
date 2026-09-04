@@ -24,6 +24,8 @@ import {
   verifySessionToken,
 } from "../_lib/token.js";
 
+const REFERENCE_PREPARATION_TIMEOUT_MS = 45_000;
+
 function statusMessage(status: GenerationStatus): string {
   if (status === "queued") {
     return "The 3D model is queued for generation.";
@@ -48,9 +50,24 @@ async function startGeneration(request: Request): Promise<Response> {
   assertSessionBindings(session, image.sha256, input.analysis);
   const shouldNormalize =
     !config.mockMode && (input.normalizeImage !== false || image.mediaType === "image/webp");
-  const reference = shouldNormalize
-    ? await normalizeReferenceImage(image, input.analysis, config, request.signal)
-    : image;
+  let reference = image;
+  if (shouldNormalize) {
+    try {
+      reference = await normalizeReferenceImage(
+        image,
+        input.analysis,
+        {
+          ...config,
+          openAiTimeoutMs: Math.min(config.openAiTimeoutMs, REFERENCE_PREPARATION_TIMEOUT_MS),
+        },
+        request.signal,
+      );
+    } catch (error) {
+      if (!(error instanceof ApiError) || !error.recoverable || image.mediaType === "image/webp") {
+        throw error;
+      }
+    }
+  }
   if (reference.mediaType === "image/webp" && config.imageTo3dProvider === "meshy") {
     throw new ApiError(
       400,

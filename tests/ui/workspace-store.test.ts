@@ -245,7 +245,10 @@ describe("dynamic workspace action layer", () => {
     await store.getState().start3DGeneration(humanActionOptions(store));
 
     expect(mocked.startModelGeneration).toHaveBeenCalledWith(
-      expect.objectContaining({ analysis: expect.objectContaining({ objectName: "Desk fan" }) }),
+      expect.objectContaining({
+        analysis: expect.objectContaining({ objectName: "Desk fan" }),
+        normalizeImage: true,
+      }),
       expect.any(AbortSignal),
     );
     expect(store.getState().objectNameCorrection).toBe("Circulation fan");

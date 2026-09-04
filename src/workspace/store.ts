@@ -37,7 +37,7 @@ export interface WorkspaceActions {
   setVisualMode(mode: WorkspaceVisualMode): void;
   setGuidePageOpen(open: boolean): void;
   setActiveRepairStep(index: number): void;
-  setModelError(message: string): void;
+  setModelError(message: string | null): void;
   setActivityOpen(open: boolean): void;
   askRepairAssistant(
     question: string,
@@ -667,9 +667,11 @@ export function createWorkspaceStore(
       setModelError(message) {
         commit({
           modelError: message,
-          visualMode: "diagnostic",
+          visualMode: "model",
           exploded: false,
-          announcement: "The 3D model could not be displayed. The damage map is still available.",
+          announcement: message
+            ? "The 3D model is ready, but the viewer could not display it."
+            : "Retrying the completed 3D model in the viewer.",
         });
       },
       setActivityOpen(open) {
@@ -1186,7 +1188,8 @@ export function createWorkspaceStore(
           stage: "preparing",
           generationStatus: "queued",
           generationProgress: 5,
-          generationMessage: "Preparing a clean reference.",
+          generationMessage:
+            "Preparing a damage-preserving reference. This stage is capped at 45 seconds.",
           generationError: null,
           operationError: null,
           isBusy: true,
@@ -1194,7 +1197,7 @@ export function createWorkspaceStore(
           modelError: null,
           visualMode: "model",
           exploded: false,
-          announcement: "Preparing a clean reference for 3D reconstruction.",
+          announcement: "Preparing a damage-preserving reference for 3D reconstruction.",
           reversibleActivity: null,
         });
         try {
@@ -1239,7 +1242,8 @@ export function createWorkspaceStore(
               sessionToken: refreshed.sessionToken,
               analysis: refreshed.analysis,
               objectNameCorrection,
-              generationMessage: "Preparing a clean reference.",
+              generationMessage:
+                "Preparing a damage-preserving reference. This stage is capped at 45 seconds.",
             });
             if (refreshed.analysis.safety.riskLevel === "professional_help_only") {
               currentTaskController = null;

@@ -121,15 +121,36 @@ describe("3D model fallback", () => {
     model.mockRestore();
   });
 
-  it("returns to the clean original when the remote GLB cannot load", async () => {
+  it("keeps the completed model and reloads it without regenerating after a viewer failure", async () => {
+    const user = userEvent.setup();
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const regenerate = vi
+      .spyOn(workspaceStore.getState(), "start3DGeneration")
+      .mockResolvedValue({ ok: true });
     render(<VisualWorkspace />);
 
     await waitFor(() =>
-      expect(screen.getByAltText("Original view of Desk fan")).toHaveAttribute("src", "blob:fan"),
+      expect(
+        screen.getByText("Your model is ready, but the viewer could not load it"),
+      ).toBeInTheDocument(),
     );
-    expect(screen.getByText(/remote model blocked access/i)).toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: /areas that may need attention/i })).toBeNull();
+    expect(workspaceStore.getState()).toMatchObject({
+      visualMode: "model",
+      model: { glbUrl: "https://assets.example/model.glb" },
+      generationStatus: "succeeded",
+    });
+    expect(screen.getByRole("button", { name: "Retry loading model" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "3D model" }));
+    await waitFor(() =>
+      expect(
+        screen.getByText("Your model is ready, but the viewer could not load it"),
+      ).toBeInTheDocument(),
+    );
+    expect(regenerate).not.toHaveBeenCalled();
+    expect(workspaceStore.getState().model).not.toBeNull();
+
+    regenerate.mockRestore();
     consoleError.mockRestore();
   });
 

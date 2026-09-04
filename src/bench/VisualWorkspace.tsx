@@ -206,10 +206,9 @@ export function RepairGuideVisual() {
       {showReadyModel && state.model ? (
         <ModelBoundary
           modelKey={state.model.glbUrl}
-          onFailure={() => {
-            workspaceStore.getState().setModelError("The 3D model could not be loaded.");
-            workspaceStore.getState().setVisualMode("guide");
-          }}
+          onFailure={() =>
+            workspaceStore.getState().setModelError("The completed 3D file could not be loaded.")
+          }
         >
           <Suspense
             fallback={
@@ -227,6 +226,8 @@ export function RepairGuideVisual() {
             <span className="guide-model-hint">Drag to rotate · scroll to zoom</span>
           </Suspense>
         </ModelBoundary>
+      ) : showModel && state.model && state.modelError ? (
+        <ModelLoadFailure />
       ) : showModel ? (
         <ModelProgress webgl={webgl} guideContext />
       ) : (
@@ -308,7 +309,7 @@ function ModelProgress({
         <div className="model-build-copy">
           <small>3D reconstruction</small>
           <strong>
-            {state.stage === "preparing" ? "Preparing your photo" : "Building the model"}
+            {state.stage === "preparing" ? "Preparing the 3D reference" : "Building the model"}
           </strong>
           <p>{state.generationMessage ?? "This usually takes a few minutes."}</p>
         </div>
@@ -370,6 +371,38 @@ function ModelProgress({
   );
 }
 
+function ModelLoadFailure() {
+  const state = useWorkspaceStore((current) => current);
+
+  return (
+    <div className="model-generation-state" role="alert">
+      <RepairIcon name="warning" size={38} />
+      <small>3D viewer</small>
+      <strong>Your model is ready, but the viewer could not load it</strong>
+      <p>{state.modelError ?? "The completed model file could not be displayed."}</p>
+      <div className="model-load-actions">
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => workspaceStore.getState().setModelError(null)}
+        >
+          <RepairIcon name="reset" /> Retry loading model
+        </button>
+        <button
+          type="button"
+          className="secondary-button"
+          disabled={state.isBusy}
+          onClick={() =>
+            void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
+          }
+        >
+          <RepairIcon name="cube" /> Rebuild 3D
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function VisualWorkspace() {
   const state = useWorkspaceStore((current) => current);
   const [webgl] = useState(supportsWebGL);
@@ -411,10 +444,15 @@ export function VisualWorkspace() {
   const chooseModel = () => {
     workspaceStore.getState().setVisualMode("model");
     const next = workspaceStore.getState();
+    if (next.model && next.modelError) {
+      next.setModelError(null);
+      return;
+    }
     if (
       webgl &&
       !next.isBusy &&
-      (["idle", "failed", "cancelled"].includes(next.generationStatus) || next.modelError)
+      !next.model &&
+      ["idle", "failed", "cancelled"].includes(next.generationStatus)
     ) {
       void next.start3DGeneration(humanActionOptions(workspaceStore));
     }
@@ -471,7 +509,7 @@ export function VisualWorkspace() {
           <ModelBoundary
             modelKey={state.model.glbUrl}
             onFailure={() =>
-              workspaceStore.getState().setModelError("The 3D model could not be loaded.")
+              workspaceStore.getState().setModelError("The completed 3D file could not be loaded.")
             }
           >
             <Suspense
@@ -489,18 +527,14 @@ export function VisualWorkspace() {
               />
             </Suspense>
           </ModelBoundary>
+        ) : showModel && state.model && state.modelError ? (
+          <ModelLoadFailure />
         ) : showModel ? (
           <ModelProgress webgl={webgl} />
         ) : state.image ? (
           <DiagnosticView source={state.image.previewUrl} objectName={objectName} />
         ) : null}
       </div>
-      {state.modelError && (
-        <p className="model-fallback-note" role="status">
-          <RepairIcon name="info" /> The remote model blocked access, so the damage map is shown.
-          Select 3D model to retry.
-        </p>
-      )}
       {showReadyModel && (
         <fieldset className="model-controls">
           <legend className="sr-only">3D view controls</legend>
