@@ -2594,7 +2594,7 @@ details.compact-plan-details > summary {
   z-index: 90;
   right: clamp(16px, 2.5vw, 38px);
   bottom: clamp(16px, 2.5vw, 34px);
-  width: min(440px, calc(100vw - 32px));
+  width: min(360px, calc(100vw - 32px));
 }
 
 .activity-toggle {
@@ -2631,18 +2631,17 @@ details.compact-plan-details > summary {
 
 .activity-panel {
   position: fixed;
-  top: clamp(16px, 2.5vw, 34px);
-  right: clamp(16px, 2.5vw, 38px);
+  left: clamp(16px, 2.5vw, 38px);
   bottom: calc(clamp(16px, 2.5vw, 34px) + 62px);
-  width: min(440px, calc(100vw - 32px));
-  max-height: none;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(58dvh, 500px);
   overflow: auto;
   margin: 0;
-  padding: 22px;
+  padding: 16px;
   border: 1px solid var(--steel-bright);
   border-radius: 16px;
   background: rgb(17 20 21 / 0.98);
-  box-shadow: -18px 0 48px rgb(0 0 0 / 0.28);
+  box-shadow: 18px 0 48px rgb(0 0 0 / 0.28);
   overscroll-behavior: contain;
 }
 
@@ -2650,7 +2649,7 @@ details.compact-plan-details > summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px;
-  margin: 18px 0;
+  margin: 14px 0;
   padding: 4px;
   border: 1px solid var(--steel);
   border-radius: 11px;
@@ -2879,7 +2878,7 @@ details.compact-plan-details > summary {
 }
 
 .activity-heading h2 {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .activity-status {
@@ -2961,7 +2960,7 @@ details.compact-plan-details > summary {
 .activity-list > li {
   display: grid;
   gap: 10px;
-  padding: 14px;
+  padding: 12px;
   border: 1px solid var(--steel);
   border-radius: 11px;
   background: var(--ink);
@@ -3292,10 +3291,10 @@ details.compact-plan-details > summary {
   }
 
   .activity-panel {
-    top: 12px;
-    right: 12px;
+    left: 12px;
     bottom: 74px;
     width: calc(100vw - 24px);
+    max-height: min(64dvh, 500px);
     padding: 16px;
   }
 

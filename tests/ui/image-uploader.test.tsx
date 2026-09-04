@@ -16,7 +16,7 @@ describe("WebMCP image uploader", () => {
     workspaceStore.getState().reset();
   });
 
-  it("focuses the uploader and requests the browser-required human gesture", async () => {
+  it("focuses the uploader and reports a successful human handoff", async () => {
     const modelContext = new ModelContextMock();
     const runtime = createAgentRuntime(createWorkspaceController(workspaceStore), modelContext);
     render(<IntakePanel />);
@@ -36,10 +36,10 @@ describe("WebMCP image uploader", () => {
     );
     expect(openPicker).not.toHaveBeenCalled();
     expect(result).toMatchObject({
-      ok: false,
+      ok: true,
       source: "webmcp",
-      code: "HUMAN_ACTION_REQUIRED",
-      message: expect.stringContaining("press Enter or click"),
+      status: "awaiting_user",
+      humanAction: expect.stringContaining("Press Enter or click"),
       affectedTarget: { id: "image-uploader" },
     });
     expect(screen.getByText(/The uploader is ready/)).toBeInTheDocument();

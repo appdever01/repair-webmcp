@@ -8,7 +8,7 @@ import {
   getNextQuestion,
   startModelGeneration,
 } from "../generation/client";
-import { prepareImage } from "./image";
+import { loadImageFile, prepareImage } from "./image";
 
 export interface WorkspaceServices {
   analyzeObject: typeof analyzeObject;
@@ -19,6 +19,7 @@ export interface WorkspaceServices {
   startModelGeneration: typeof startModelGeneration;
   getModelGeneration: typeof getModelGeneration;
   draftRepairPlan: typeof draftRepairPlan;
+  loadImageFile: typeof loadImageFile;
   prepareImage: typeof prepareImage;
   wait(milliseconds: number, signal: AbortSignal): Promise<void>;
 }
@@ -50,6 +51,7 @@ export const defaultWorkspaceServices: WorkspaceServices = {
   startModelGeneration,
   getModelGeneration,
   draftRepairPlan,
+  loadImageFile,
   prepareImage,
   wait,
 };

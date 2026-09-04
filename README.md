@@ -234,6 +234,12 @@ Open the next unanswered observation request. Do not answer it for me.
 Draft cautious repair guidance from the analysis and my recorded observations. Call out unknowns and stop conditions.
 ```
 
+For a reliable recorded demo, start from the bundled repair object instead of the operating system file picker:
+
+```text
+Use the broken-cup demo. Analyze the damage, focus the most likely failure point, ask me only for evidence the photo cannot provide, then draft the safest repair plan.
+```
+
 ### Chrome developer testing
 
 For direct browser development, use a Chrome build with WebMCP testing support or the relevant origin trial:
@@ -254,7 +260,9 @@ The runtime always begins with a read operation and registers additional tools o
 | Tool | Type | Available when | Result |
 | --- | --- | --- | --- |
 | `get_workspace_state` | Read-only | Always | Returns a bounded public snapshot, state version, and currently available tools. |
-| `open_image_uploader` | Mutation | No image or task is active | Focuses the uploader and returns `HUMAN_ACTION_REQUIRED`; the person presses Enter or clicks to open the system picker. |
+| `select_demo_object` | Mutation | No image or task is active | Selects the bundled broken-cup or desk-lamp image for a deterministic agent-driven demo. |
+| `import_image_from_url` | Mutation | No image or task is active | Imports a public CORS-enabled HTTPS JPEG, PNG, or WebP into the workspace. |
+| `open_image_uploader` | Mutation | No image or task is active | Focuses the uploader and returns a successful `awaiting_user` handoff; the person presses Enter or clicks to open the system picker. |
 | `analyze_uploaded_object` | Mutation | A person-selected image is ready | Starts image analysis. |
 | `start_3d_generation` | Mutation | Analysis exists and generation is idle, failed, or cancelled | Starts an optional cancellable model task. |
 | `get_generation_status` | Mutation | Generation is queued or processing | Refreshes the visible provider status. |

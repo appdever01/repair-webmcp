@@ -30,26 +30,33 @@ test("registers stage-aware tools on document.modelContext and executes them", a
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto("/");
-  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/2 actions/);
-  expect(await toolNames(page)).toEqual(["get_workspace_state", "open_image_uploader"]);
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/4 actions/);
+  expect(await toolNames(page)).toEqual([
+    "get_workspace_state",
+    "select_demo_object",
+    "import_image_from_url",
+    "open_image_uploader",
+  ]);
 
   const state = await execute(page, "get_workspace_state", {});
   expect(state).toMatchObject({ ok: true, source: "webmcp", stateVersion: 0 });
 
   const opened = await execute(page, "open_image_uploader", { expectedStateVersion: 0 });
   expect(opened).toMatchObject({
-    ok: false,
-    code: "HUMAN_ACTION_REQUIRED",
+    ok: true,
+    status: "awaiting_user",
     stateVersion: 1,
     affectedTarget: { id: "image-uploader" },
   });
-  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/3 actions/);
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/5 actions/);
   await expect(page.getByText("Assistant ready.", { exact: false })).toBeVisible();
   await expect(
-    page.getByText("The uploader is ready on the page. Press Enter or click it to choose a photo."),
+    page.getByText("The uploader is ready. Waiting for the person to choose a photo."),
   ).toBeVisible();
   expect(await toolNames(page)).toEqual([
     "get_workspace_state",
+    "select_demo_object",
+    "import_image_from_url",
     "open_image_uploader",
     "undo_agent_action",
   ]);
@@ -62,7 +69,18 @@ test("registers stage-aware tools on document.modelContext and executes them", a
     expectedStateVersion: 1,
   });
   expect(undone).toMatchObject({ ok: true, stateVersion: 2 });
-  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/2 actions/);
-  expect(await toolNames(page)).toEqual(["get_workspace_state", "open_image_uploader"]);
+  await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/4 actions/);
+
+  const selected = await execute(page, "select_demo_object", {
+    sampleId: "broken-cup",
+    expectedStateVersion: 2,
+  });
+  expect(selected).toMatchObject({
+    ok: true,
+    stateVersion: 3,
+    affectedTarget: { id: "image-uploader" },
+  });
+  await expect(page.getByAltText("Selected object preview")).toBeVisible();
+  expect(await toolNames(page)).toEqual(["get_workspace_state", "analyze_uploaded_object"]);
   expect(pageErrors).toEqual([]);
 });

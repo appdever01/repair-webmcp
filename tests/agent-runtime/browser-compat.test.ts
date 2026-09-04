@@ -48,7 +48,7 @@ describe("WebMCP browser compatibility", () => {
       expect(runtime.activityStore.getSnapshot()).toMatchObject({
         connectionState: "ready",
         entryPoint: "document",
-        registeredToolCount: 2,
+        registeredToolCount: 4,
       });
       await runtime.dispose();
       expect(runtime.activityStore.getSnapshot().entryPoint).toBeNull();
@@ -82,6 +82,8 @@ describe("WebMCP browser compatibility", () => {
     await runtime.flush();
     expect(toolNames(modelContext)).toEqual([
       "get_workspace_state",
+      "select_demo_object",
+      "import_image_from_url",
       "open_image_uploader",
       "undo_agent_action",
     ]);
@@ -94,7 +96,12 @@ describe("WebMCP browser compatibility", () => {
     expect(result).toMatchObject({ ok: true, stateVersion: 2 });
     expect(toolNames(modelContext)).toContain("undo_agent_action");
     await runtime.flush();
-    expect(toolNames(modelContext)).toEqual(["get_workspace_state", "open_image_uploader"]);
+    expect(toolNames(modelContext)).toEqual([
+      "get_workspace_state",
+      "select_demo_object",
+      "import_image_from_url",
+      "open_image_uploader",
+    ]);
     await runtime.dispose();
   });
 
@@ -103,13 +110,20 @@ describe("WebMCP browser compatibility", () => {
     const modelContext = new ModelContextMock();
     const runtime = createAgentRuntime(controller, modelContext);
     await runtime.ready;
-    expect(modelContext.registrationLog).toEqual(["get_workspace_state", "open_image_uploader"]);
+    expect(modelContext.registrationLog).toEqual([
+      "get_workspace_state",
+      "select_demo_object",
+      "import_image_from_url",
+      "open_image_uploader",
+    ]);
 
     controller.setSnapshot({ imageSelected: true, stateVersion: 1 });
     await runtime.flush();
 
     expect(modelContext.registrationLog).toEqual([
       "get_workspace_state",
+      "select_demo_object",
+      "import_image_from_url",
       "open_image_uploader",
       "analyze_uploaded_object",
     ]);
@@ -135,7 +149,7 @@ describe("WebMCP browser compatibility", () => {
 
     expect(runtime.activityStore.getSnapshot()).toMatchObject({
       connectionState: "ready",
-      registeredToolCount: 2,
+      registeredToolCount: 4,
       lastRegistrationError: null,
     });
     await runtime.dispose();

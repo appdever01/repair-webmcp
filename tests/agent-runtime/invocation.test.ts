@@ -22,7 +22,12 @@ describe("observable agent tool invocation", () => {
       stateVersion: 0,
       imageSelected: false,
       reversibleActivity: null,
-      availableTools: ["get_workspace_state", "open_image_uploader"],
+      availableTools: [
+        "get_workspace_state",
+        "select_demo_object",
+        "import_image_from_url",
+        "open_image_uploader",
+      ],
     });
     expect(events.map((event) => event.phase)).toEqual(["requested", "running", "succeeded"]);
     expect(new Set(events.map((event) => event.correlationId)).size).toBe(1);
@@ -60,6 +65,8 @@ describe("observable agent tool invocation", () => {
       source: "webmcp",
       stateVersion: 1,
       summary: expect.stringContaining("Prepared the image uploader"),
+      status: "awaiting_user",
+      humanAction: expect.stringContaining("Press Enter or click"),
       affectedTarget: { kind: "uploader", id: "image-uploader" },
     });
     expect(controller.getSnapshot().imageSelected).toBe(false);
@@ -84,6 +91,32 @@ describe("observable agent tool invocation", () => {
       stateVersionBefore: 0,
       stateVersionAfter: 1,
     });
+    await runtime.dispose();
+  });
+
+  it("selects a bundled demo object through WebMCP", async () => {
+    const controller = new MockWorkspaceController();
+    const modelContext = new ModelContextMock();
+    const runtime = createAgentRuntime(controller, modelContext);
+    await runtime.ready;
+
+    const result = await modelContext.execute("select_demo_object", {
+      sampleId: "broken-cup",
+      expectedStateVersion: 0,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      source: "webmcp",
+      stateVersion: 1,
+      affectedTarget: { kind: "uploader", id: "image-uploader" },
+      availableTools: ["get_workspace_state", "analyze_uploaded_object"],
+    });
+    expect(controller.calls[0]).toMatchObject({
+      name: "selectDemoObject",
+      value: "broken-cup",
+    });
+    expect(controller.getSnapshot().imageSelected).toBe(true);
     await runtime.dispose();
   });
 

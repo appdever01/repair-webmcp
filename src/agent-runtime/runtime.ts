@@ -51,6 +51,8 @@ const errorMessages: Record<WorkspaceActionErrorCode, string> = {
 const successMessages: Record<AgentToolName, string> = {
   get_workspace_state: "Read the current visible workspace state.",
   open_image_uploader: "Prepared the image uploader for the person.",
+  select_demo_object: "Selected a bundled demo image in the visible repair workspace.",
+  import_image_from_url: "Imported the remote image into the visible repair workspace.",
   analyze_uploaded_object: "Started analysis of the person-selected image.",
   start_3d_generation: "Started the 3D generation task.",
   get_generation_status: "Refreshed the visible generation status.",
@@ -68,6 +70,8 @@ interface ParsedToolInput extends Record<string, unknown> {
   questionId?: string;
   activityId?: string;
   exploded?: boolean;
+  sampleId?: "broken-cup" | "desk-lamp";
+  imageUrl?: string;
 }
 
 interface InvocationOptions {
@@ -129,7 +133,9 @@ export function selectAvailableAgentTools(snapshot: WorkspaceSnapshot): AgentToo
     if (snapshot.reversibleActivity) names.push("undo_agent_action");
     return names;
   }
-  if (!snapshot.imageSelected && !activeTask) names.push("open_image_uploader");
+  if (!snapshot.imageSelected && !activeTask) {
+    names.push("select_demo_object", "import_image_from_url", "open_image_uploader");
+  }
   if (snapshot.imageSelected && !snapshot.analysisExists && !activeTask) {
     names.push("analyze_uploaded_object");
   }
@@ -253,6 +259,10 @@ function targetFor(
   switch (name) {
     case "open_image_uploader":
       return { kind: "uploader", id: "image-uploader", title: "Image uploader" };
+    case "select_demo_object":
+      return { kind: "uploader", id: "image-uploader", title: "Demo repair photo" };
+    case "import_image_from_url":
+      return { kind: "uploader", id: "image-uploader", title: "Imported repair photo" };
     case "analyze_uploaded_object":
       return { kind: "analysis", id: "object-analysis", title: "Object analysis" };
     case "start_3d_generation":
@@ -355,6 +365,10 @@ async function runControllerAction(
   switch (name) {
     case "open_image_uploader":
       return controller.openImageUploader(context);
+    case "select_demo_object":
+      return controller.selectDemoObject({ sampleId: input.sampleId ?? "broken-cup" }, context);
+    case "import_image_from_url":
+      return controller.importImageFromUrl({ imageUrl: input.imageUrl ?? "" }, context);
     case "analyze_uploaded_object":
       return controller.analyzeUploadedObject(context);
     case "start_3d_generation":
@@ -530,8 +544,7 @@ export function createAgentRuntime(
                 source,
                 code: result.code,
                 stateVersion: afterVersion,
-                message:
-                  "The uploader is focused and ready. The person must press Enter or click it to open the system image picker.",
+                message: "The person must complete the highlighted step in the visible workspace.",
                 ...(target ? { affectedTarget: target } : {}),
                 availableTools: selectAvailableAgentTools(after),
                 allowedNext: ["get_workspace_state"],
@@ -548,6 +561,12 @@ export function createAgentRuntime(
         source,
         stateVersion: afterVersion,
         summary: successMessages[name],
+        ...(name === "open_image_uploader"
+          ? {
+              status: "awaiting_user",
+              humanAction: "Press Enter or click the highlighted uploader to choose a photo.",
+            }
+          : {}),
         ...(target ? { affectedTarget: target } : {}),
         availableTools: selectAvailableAgentTools(after),
       });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { demoObjectIds } from "../demoObjects";
 import type { AgentToolClassification, ToolManifestItem } from "./types";
 
 const stateVersionSchema = z.number().int().nonnegative().meta({
@@ -14,6 +15,20 @@ const publicIdSchema = z
 export const agentToolInputSchemas = {
   get_workspace_state: z.strictObject({}),
   open_image_uploader: z.strictObject({ expectedStateVersion: stateVersionSchema }),
+  select_demo_object: z.strictObject({
+    sampleId: z.enum(demoObjectIds).meta({
+      description: "Bundled repair object to select: broken-cup or desk-lamp.",
+    }),
+    expectedStateVersion: stateVersionSchema,
+  }),
+  import_image_from_url: z.strictObject({
+    imageUrl: z
+      .string()
+      .max(2_048)
+      .regex(/^https:\/\/[^\s]+$/)
+      .meta({ description: "Public CORS-enabled HTTPS URL for a JPEG, PNG, or WebP image." }),
+    expectedStateVersion: stateVersionSchema,
+  }),
   analyze_uploaded_object: z.strictObject({ expectedStateVersion: stateVersionSchema }),
   start_3d_generation: z.strictObject({ expectedStateVersion: stateVersionSchema }),
   get_generation_status: z.strictObject({ expectedStateVersion: stateVersionSchema }),
@@ -65,6 +80,20 @@ export const agentToolMetadata: Record<AgentToolName, AgentToolMetadata> = {
       "Bring the image uploader into view and focus it. The person must press Enter or click to open the system picker.",
     classification: "mutation",
     untrustedContent: false,
+  },
+  select_demo_object: {
+    title: "Select demo repair object",
+    description:
+      "Select a bundled broken cup or desk lamp image in the visible workspace for a reliable demonstration.",
+    classification: "mutation",
+    untrustedContent: false,
+  },
+  import_image_from_url: {
+    title: "Import repair image URL",
+    description:
+      "Import a public CORS-enabled HTTPS JPEG, PNG, or WebP into the visible repair workspace.",
+    classification: "mutation",
+    untrustedContent: true,
   },
   analyze_uploaded_object: {
     title: "Analyze uploaded object",

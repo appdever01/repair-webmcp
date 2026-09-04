@@ -12,6 +12,65 @@ export interface PreparedImage {
   height: number;
 }
 
+function imageExtension(type: ImageMediaType): string {
+  if (type === "image/png") return "png";
+  if (type === "image/webp") return "webp";
+  return "jpg";
+}
+
+function remoteImageName(url: URL, type: ImageMediaType): string {
+  const candidate =
+    url.pathname
+      .split("/")
+      .at(-1)
+      ?.replace(/[^a-zA-Z0-9._-]/g, "-") ?? "";
+  if (/\.(?:jpe?g|png|webp)$/i.test(candidate)) return candidate.slice(0, 120);
+  return `remote-repair-image.${imageExtension(type)}`;
+}
+
+export async function loadImageFile(
+  value: string,
+  preferredName: string | undefined,
+  signal: AbortSignal,
+): Promise<File> {
+  const pageUrl = typeof window === "undefined" ? "https://repair.invalid/" : window.location.href;
+  const pageOrigin = new URL(pageUrl).origin;
+  const requestedUrl = new URL(value, pageUrl);
+  const sameOrigin = requestedUrl.origin === pageOrigin;
+  if (
+    (!sameOrigin && requestedUrl.protocol !== "https:") ||
+    requestedUrl.username ||
+    requestedUrl.password
+  ) {
+    throw new Error("Use a public HTTPS image URL without embedded credentials.");
+  }
+  signal.throwIfAborted();
+  const response = await fetch(requestedUrl.href, {
+    signal,
+    mode: "cors",
+    credentials: sameOrigin ? "same-origin" : "omit",
+    referrerPolicy: "no-referrer",
+  });
+  if (!response.ok) throw new Error("The image URL could not be loaded.");
+  const responseUrl = new URL(response.url || requestedUrl.href, pageUrl);
+  if (responseUrl.origin !== pageOrigin && responseUrl.protocol !== "https:") {
+    throw new Error("The image URL redirected to an insecure location.");
+  }
+  const contentLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_SOURCE_IMAGE_BYTES) {
+    throw new Error("Choose an image smaller than 24 MB.");
+  }
+  const type = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  if (!isAcceptedImageType(type))
+    throw new Error("The URL must return a JPEG, PNG, or WebP image.");
+  const blob = await response.blob();
+  signal.throwIfAborted();
+  const file = new File([blob], preferredName ?? remoteImageName(responseUrl, type), { type });
+  const validationError = validateImageFile(file);
+  if (validationError) throw new Error(validationError);
+  return file;
+}
+
 function isAcceptedImageType(type: string): type is ImageMediaType {
   return ACCEPTED_IMAGE_TYPES.some((accepted) => accepted === type);
 }

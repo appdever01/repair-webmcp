@@ -1,3 +1,4 @@
+import type { DemoObjectId } from "../demoObjects";
 import type { ModelContextEntryPoint } from "./modelContext";
 
 export type AgentConnectionState = "unsupported" | "registering" | "ready" | "error";
@@ -78,10 +79,23 @@ export interface HumanObservationRequestInput {
   questionId: string;
 }
 
+export interface SelectDemoObjectInput {
+  sampleId: DemoObjectId;
+}
+
+export interface ImportImageFromUrlInput {
+  imageUrl: string;
+}
+
 export interface WorkspaceController {
   getSnapshot(): WorkspaceSnapshot;
   subscribe(listener: () => void): () => void;
   openImageUploader(context: WorkspaceActionContext): WorkspaceAction;
+  selectDemoObject(input: SelectDemoObjectInput, context: WorkspaceActionContext): WorkspaceAction;
+  importImageFromUrl(
+    input: ImportImageFromUrlInput,
+    context: WorkspaceActionContext,
+  ): WorkspaceAction;
   analyzeUploadedObject(context: WorkspaceActionContext): WorkspaceAction;
   start3DGeneration(context: WorkspaceActionContext): WorkspaceAction;
   refreshGenerationStatus(context: WorkspaceActionContext): WorkspaceAction;

@@ -109,6 +109,9 @@ function services(
   const polls = [...(values.polls ?? [])];
   const questions = [...(values.questions ?? [])];
   return {
+    loadImageFile: vi.fn(async (_url, name) =>
+      photo(name?.endsWith(".webp") ? "image/webp" : "image/jpeg"),
+    ),
     prepareImage: vi.fn(async () => ({
       blob: new Blob(["compressed"], { type: "image/jpeg" }),
       image,
@@ -197,6 +200,37 @@ describe("dynamic workspace action layer", () => {
     expect(store.getState().image).toBeNull();
     expect(store.getState().originalFile).toBeNull();
     expect(URL.revokeObjectURL).toHaveBeenCalled();
+  });
+
+  it("selects bundled demos and imports public image URLs through the shared action layer", async () => {
+    const mocked = services();
+    const store = createWorkspaceStore(mocked);
+
+    await expect(
+      store.getState().selectDemoObject("broken-cup", humanActionOptions(store)),
+    ).resolves.toEqual({ ok: true });
+    expect(mocked.loadImageFile).toHaveBeenCalledWith(
+      "/sample-broken-cup.jpg",
+      "sample-broken-cup.jpg",
+      expect.any(AbortSignal),
+    );
+    expect(store.getState()).toMatchObject({
+      stage: "image-ready",
+      image: expect.any(Object),
+      originalFile: expect.any(File),
+    });
+
+    store.getState().removeImage();
+    await expect(
+      store
+        .getState()
+        .importImageFromUrl("https://images.example/lamp.webp", humanActionOptions(store)),
+    ).resolves.toEqual({ ok: true });
+    expect(mocked.loadImageFile).toHaveBeenLastCalledWith(
+      "https://images.example/lamp.webp",
+      undefined,
+      expect.any(AbortSignal),
+    );
   });
 
   it("analyzes a selected image and preserves the signed analysis after a name correction", async () => {

@@ -74,6 +74,10 @@ export function summarizeAgentToolInput(input: unknown): SafeActivitySummary {
       : "[invalid number]";
   }
   if (typeof record.exploded === "boolean") summary.exploded = record.exploded;
+  if (typeof record.sampleId === "string") {
+    summary.sampleId = sanitizeActivityText(record.sampleId, 40);
+  }
+  if (typeof record.imageUrl === "string") summary.imageUrl = "[provided]";
   for (const key of ["hotspotId", "questionId", "activityId"] as const) {
     if (key in record) summary[key] = "[provided]";
   }
@@ -83,6 +87,8 @@ export function summarizeAgentToolInput(input: unknown): SafeActivitySummary {
     "questionId",
     "activityId",
     "exploded",
+    "sampleId",
+    "imageUrl",
   ]);
   const ignoredFieldCount = Object.keys(record).filter((key) => !expectedKeys.has(key)).length;
   if (ignoredFieldCount > 0) summary.ignoredFields = ignoredFieldCount;

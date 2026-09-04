@@ -1,5 +1,7 @@
 import type {
   HumanObservationRequestInput,
+  ImportImageFromUrlInput,
+  SelectDemoObjectInput,
   WorkspaceActionContext,
   WorkspaceController,
   WorkspaceSnapshot,
@@ -49,6 +51,10 @@ export function createWorkspaceController(store: WorkspaceStore): WorkspaceContr
     getSnapshot: () => snapshot(store),
     subscribe: (listener) => store.subscribe(listener),
     openImageUploader: (context) => store.getState().openImageUploader(options(context)),
+    selectDemoObject: (input: SelectDemoObjectInput, context) =>
+      store.getState().selectDemoObject(input.sampleId, options(context)),
+    importImageFromUrl: (input: ImportImageFromUrlInput, context) =>
+      store.getState().importImageFromUrl(input.imageUrl, options(context)),
     analyzeUploadedObject: (context) => store.getState().analyzeUploadedObject(options(context)),
     start3DGeneration: (context) => store.getState().start3DGeneration(options(context)),
     refreshGenerationStatus: (context) =>

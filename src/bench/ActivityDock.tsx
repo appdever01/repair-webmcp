@@ -41,11 +41,20 @@ function connectionStatus(activity: ReturnType<typeof useAgentActivityStore>) {
 
 function visibleChange(event: AgentActivityEvent) {
   if (event.phase === "failed" && event.resultSummary?.code === "HUMAN_ACTION_REQUIRED") {
-    return "The uploader is ready on the page. Press Enter or click it to choose a photo.";
+    return "Waiting for the person to complete the highlighted step.";
   }
   if (event.phase === "failed" || event.phase === "cancelled")
     return "No workspace change was kept.";
   if (event.phase !== "succeeded") return "The requested change is in progress.";
+  if (event.toolName === "open_image_uploader") {
+    return "The uploader is ready. Waiting for the person to choose a photo.";
+  }
+  if (event.toolName === "select_demo_object") {
+    return "A demo repair photo was selected in the visible workspace.";
+  }
+  if (event.toolName === "import_image_from_url") {
+    return "The image URL was imported into the visible workspace.";
+  }
   if (!event.affectedTarget) return "The visible workspace state was read.";
   return `${event.affectedTarget.title} was updated in the visible workspace.`;
 }

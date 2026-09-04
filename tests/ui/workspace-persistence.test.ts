@@ -48,6 +48,7 @@ function unusedServices(): WorkspaceServices {
     startModelGeneration: unavailable,
     getModelGeneration: unavailable,
     draftRepairPlan: unavailable,
+    loadImageFile: unavailable,
     prepareImage: unavailable,
     wait: unavailable,
   } as WorkspaceServices;

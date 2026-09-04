@@ -1,5 +1,6 @@
 import { createStore } from "zustand/vanilla";
 import type { WorkspaceActionResult } from "../agent-runtime";
+import { type DemoObjectId, demoObjects } from "../demoObjects";
 import type {
   GenerationError,
   GetModelGenerationResponse,
@@ -49,6 +50,14 @@ export interface WorkspaceActions {
   loadNextQuestion(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   finishQuestioning(): void;
   openImageUploader(options: WorkspaceActionOptions): WorkspaceActionResult;
+  selectDemoObject(
+    sampleId: DemoObjectId,
+    options: WorkspaceActionOptions,
+  ): Promise<WorkspaceActionResult>;
+  importImageFromUrl(
+    imageUrl: string,
+    options: WorkspaceActionOptions,
+  ): Promise<WorkspaceActionResult>;
   analyzeUploadedObject(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   start3DGeneration(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
   refreshGenerationStatus(options: WorkspaceActionOptions): Promise<WorkspaceActionResult>;
@@ -371,6 +380,34 @@ export function createWorkspaceStore(
 
     const isCurrentAssistantTask = (sequence: number) =>
       assistantTaskSequence === sequence && assistantTaskController !== null;
+
+    const loadImageIntoWorkspace = async (
+      url: string,
+      preferredName: string | undefined,
+      options: WorkspaceActionOptions,
+    ): Promise<WorkspaceActionResult> => {
+      const state = get();
+      if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+      if (state.image || state.isBusy) return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+      try {
+        const file = await services.loadImageFile(
+          url,
+          preferredName,
+          options.signal ?? new AbortController().signal,
+        );
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        const validationError = get().selectImage(file);
+        return validationError ? { ok: false, code: "INVALID_INPUT" } : { ok: true };
+      } catch (error) {
+        if (isCancelled(error) || options.signal?.aborted) {
+          return { ok: false, code: "CANCELLED" };
+        }
+        if (!validVersion(options)) return { ok: false, code: "STALE_STATE" };
+        const message = publicError(error);
+        commit({ operationError: message, announcement: message });
+        return { ok: false, code: "ACTION_NOT_AVAILABLE" };
+      }
+    };
 
     const applyGeneration = (response: GetModelGenerationResponse) => {
       if (response.status === "succeeded") {
@@ -1027,7 +1064,15 @@ export function createWorkspaceStore(
             "The photo uploader is ready. Press Enter or click the highlighted area to choose a photo.",
           reversibleActivity: reversible("Prepared the image uploader", previous),
         });
-        return { ok: false, code: "HUMAN_ACTION_REQUIRED" };
+        return { ok: true };
+      },
+      selectDemoObject(sampleId, options) {
+        const sample = demoObjects.find((item) => item.id === sampleId);
+        if (!sample) return Promise.resolve({ ok: false, code: "INVALID_INPUT" });
+        return loadImageIntoWorkspace(sample.path, sample.name, options);
+      },
+      importImageFromUrl(imageUrl, options) {
+        return loadImageIntoWorkspace(imageUrl, undefined, options);
       },
       async analyzeUploadedObject(options) {
         const state = get();

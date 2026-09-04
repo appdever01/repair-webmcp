@@ -1,4 +1,5 @@
 import { type ChangeEvent, type DragEvent, useCallback, useEffect, useRef, useState } from "react";
+import { demoObjects } from "../demoObjects";
 import { RepairIcon } from "../design/RepairIcon";
 import {
   humanActionOptions,
@@ -7,16 +8,6 @@ import {
   workspaceStore,
 } from "../workspace";
 import { AgentSection, HowItWorks, ObjectShowcase, SiteFooter } from "./LandingSections";
-
-const sampleObjects = [
-  {
-    label: "broken cup",
-    path: "/sample-broken-cup.jpg",
-    name: "sample-broken-cup.jpg",
-    type: "image/jpeg",
-  },
-  { label: "desk lamp", path: "/fallback-lamp.webp", name: "sample-lamp.webp", type: "image/webp" },
-] as const;
 
 export function IntakePanel() {
   const state = useWorkspaceStore((current) => current);
@@ -70,13 +61,11 @@ export function IntakePanel() {
     acceptFile(event.dataTransfer.files[0]);
   };
 
-  const selectSample = async (sample: (typeof sampleObjects)[number]) => {
-    try {
-      const response = await fetch(sample.path);
-      if (!response.ok) throw new Error();
-      const blob = await response.blob();
-      acceptFile(new File([blob], sample.name, { type: sample.type }));
-    } catch {
+  const selectSample = async (sample: (typeof demoObjects)[number]) => {
+    const result = await workspaceStore
+      .getState()
+      .selectDemoObject(sample.id, humanActionOptions(workspaceStore));
+    if (!result.ok) {
       setSelectionError("The sample image could not be loaded. Choose a photo instead.");
     }
   };
@@ -243,7 +232,7 @@ export function IntakePanel() {
               <div className="sample-action">
                 <span>No photo?</span>
                 <span className="sample-action-group">
-                  {sampleObjects.map((sample) => (
+                  {demoObjects.map((sample) => (
                     <button
                       key={sample.path}
                       type="button"

@@ -17,8 +17,10 @@ describe("observable agent runtime contracts", () => {
       "focus_hotspot",
       "get_generation_status",
       "get_workspace_state",
+      "import_image_from_url",
       "open_image_uploader",
       "request_human_observation",
+      "select_demo_object",
       "start_3d_generation",
       "undo_agent_action",
     ]);
@@ -36,10 +38,15 @@ describe("observable agent runtime contracts", () => {
     const runtime = createAgentRuntime(controller, modelContext);
     await runtime.ready;
 
-    expect([...modelContext.tools.keys()]).toEqual(["get_workspace_state", "open_image_uploader"]);
+    expect([...modelContext.tools.keys()]).toEqual([
+      "get_workspace_state",
+      "select_demo_object",
+      "import_image_from_url",
+      "open_image_uploader",
+    ]);
     expect(runtime.activityStore.getSnapshot()).toMatchObject({
       connectionState: "ready",
-      registeredToolCount: 2,
+      registeredToolCount: 4,
       lastRegistrationError: null,
     });
     expect(modelContext.tools.get("get_workspace_state")?.annotations).toEqual({
@@ -76,11 +83,11 @@ describe("observable agent runtime contracts", () => {
     const runtime = createAgentRuntime(controller, modelContext);
     expect(runtime.activityStore.getSnapshot().connectionState).toBe("registering");
     await runtime.ready;
-    expect(register).toHaveBeenCalledTimes(2);
+    expect(register).toHaveBeenCalledTimes(4);
 
     controller.setSnapshot({ stage: "same-version-update" });
     await runtime.flush();
-    expect(register).toHaveBeenCalledTimes(2);
+    expect(register).toHaveBeenCalledTimes(4);
     await runtime.dispose();
   });
 

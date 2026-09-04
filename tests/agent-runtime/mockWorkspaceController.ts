@@ -10,7 +10,9 @@ export type ControllerActionName =
   | "cancelCurrentTask"
   | "draftRepairPlan"
   | "focusHotspot"
+  | "importImageFromUrl"
   | "openImageUploader"
+  | "selectDemoObject"
   | "setExplodedView"
   | "refreshGenerationStatus"
   | "requestHumanObservation"
@@ -73,6 +75,27 @@ export class MockWorkspaceController implements WorkspaceController {
       stage: "awaiting-image",
       reversibleActivity: { activityId: "activity.open-uploader", title: "Opened uploader" },
     });
+  }
+
+  selectDemoObject(
+    input: { sampleId: "broken-cup" | "desk-lamp" },
+    context: WorkspaceActionContext,
+  ) {
+    return this.perform(
+      "selectDemoObject",
+      context,
+      { stage: "image-ready", imageSelected: true, reversibleActivity: null },
+      input.sampleId,
+    );
+  }
+
+  importImageFromUrl(input: { imageUrl: string }, context: WorkspaceActionContext) {
+    return this.perform(
+      "importImageFromUrl",
+      context,
+      { stage: "image-ready", imageSelected: true, reversibleActivity: null },
+      input.imageUrl,
+    );
   }
 
   analyzeUploadedObject(context: WorkspaceActionContext) {

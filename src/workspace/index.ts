@@ -1,6 +1,7 @@
 export { createWorkspaceController } from "./controller";
 export {
   ACCEPTED_IMAGE_TYPES,
+  loadImageFile,
   MAX_COMPRESSED_IMAGE_BYTES,
   MAX_COMPRESSED_IMAGE_DIMENSION,
   MAX_SOURCE_IMAGE_BYTES,
