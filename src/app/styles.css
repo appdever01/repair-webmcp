@@ -2592,7 +2592,7 @@ details.compact-plan-details > summary {
 .activity-dock {
   position: fixed;
   z-index: 90;
-  right: clamp(16px, 2.5vw, 38px);
+  left: clamp(16px, 2.5vw, 38px);
   bottom: clamp(16px, 2.5vw, 34px);
   width: min(360px, calc(100vw - 32px));
 }
@@ -2603,7 +2603,7 @@ details.compact-plan-details > summary {
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
+  margin-right: auto;
   padding: 0 16px;
   border: 1px solid var(--steel-bright);
   border-radius: 13px;
@@ -3280,7 +3280,7 @@ details.compact-plan-details > summary {
 
 @media (max-width: 420px) {
   .activity-dock {
-    right: 12px;
+    left: 12px;
     bottom: 12px;
     width: calc(100vw - 24px);
   }
