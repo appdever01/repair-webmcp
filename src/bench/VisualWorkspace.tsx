@@ -146,7 +146,10 @@ function RepairGuideView({ source, objectName }: { source: string; objectName: s
           </div>
         )}
         <figcaption>
-          Step {activeIndex + 1} / {steps.length}
+          <span>
+            Step {activeIndex + 1} / {steps.length}
+          </span>
+          <strong>{activeStep.step.title}</strong>
         </figcaption>
       </figure>
       <nav className="repair-guide-steps" aria-label="Repair guide steps">
@@ -162,6 +165,19 @@ function RepairGuideView({ source, objectName }: { source: string; objectName: s
             <span>{index + 1}</span>
           </button>
         ))}
+        {steps.every((_, index) => state.repairStepVisuals[index]?.status === "succeeded") && (
+          <button
+            type="button"
+            className="repair-guide-regenerate"
+            onClick={() =>
+              void workspaceStore
+                .getState()
+                .generateRepairStepVisuals(humanActionOptions(workspaceStore))
+            }
+          >
+            <RepairIcon name="reset" /> Regenerate visuals
+          </button>
+        )}
       </nav>
     </div>
   );
@@ -215,6 +231,17 @@ export function RepairGuideVisual() {
         <ModelProgress webgl={webgl} guideContext />
       ) : (
         <RepairGuideView source={state.image.previewUrl} objectName={objectName} />
+      )}
+      {showReadyModel && (
+        <button
+          type="button"
+          className="guide-model-rebuild"
+          onClick={() =>
+            void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
+          }
+        >
+          <RepairIcon name="reset" /> Rebuild 3D
+        </button>
       )}
     </section>
   );
@@ -479,6 +506,16 @@ export function VisualWorkspace() {
           <legend className="sr-only">3D view controls</legend>
           <span>Drag to orbit · scroll to zoom</span>
           <div>
+            <button
+              type="button"
+              className="model-rebuild-control"
+              aria-label="Rebuild 3D model"
+              onClick={() =>
+                void workspaceStore.getState().start3DGeneration(humanActionOptions(workspaceStore))
+              }
+            >
+              <RepairIcon name="reset" /> Rebuild
+            </button>
             <button
               type="button"
               className="explode-control"

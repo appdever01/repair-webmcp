@@ -868,9 +868,12 @@ export function createWorkspaceStore(
         const steps = repairGuideSteps(state.plan);
         if (steps.length === 0) return { ok: false, code: "ACTION_NOT_AVAILABLE" };
         const task = beginRepairVisualTask(options.signal);
+        const regenerateAll =
+          state.repairStepVisuals.length === steps.length &&
+          state.repairStepVisuals.every((visual) => visual.status === "succeeded");
         const startingVisuals = steps.map(
           (_, index) =>
-            state.repairStepVisuals[index] ?? {
+            (!regenerateAll && state.repairStepVisuals[index]) || {
               status: "idle" as const,
               image: null,
               error: null,
@@ -1203,6 +1206,7 @@ export function createWorkspaceStore(
                 sessionToken: activeSessionToken,
                 image: compressedImage,
                 analysis: activeAnalysis,
+                normalizeImage: true,
               },
               task.controller.signal,
             );

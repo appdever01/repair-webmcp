@@ -537,6 +537,33 @@ describe("dynamic workspace action layer", () => {
     ).toBe(true);
   });
 
+  it("regenerates every repair visual when the existing set already succeeded", async () => {
+    const guide = vi.fn(async ({ stepIndex }: { stepIndex: number }) => ({ stepIndex, image }));
+    const store = createWorkspaceStore(services({ guide }));
+    const repairPlan = plan();
+    const steps = repairGuideSteps(repairPlan);
+    store.setState({
+      image: { name: "fan.jpg", previewUrl: "blob:fan", width: 640, height: 480 },
+      compressedImage: image,
+      analysis: analysis(),
+      sessionToken,
+      plan: repairPlan,
+      planToken,
+      guidePageOpen: true,
+      visualMode: "guide",
+      repairStepVisuals: steps.map(() => ({ status: "succeeded", image, error: null })),
+    });
+
+    await expect(
+      store.getState().generateRepairStepVisuals(humanActionOptions(store)),
+    ).resolves.toEqual({ ok: true });
+
+    expect(guide).toHaveBeenCalledTimes(steps.length);
+    expect(guide.mock.calls.map(([request]) => request.stepIndex)).toEqual(
+      steps.map((_, index) => index),
+    );
+  });
+
   it("keeps a contextual repair conversation in workspace state", async () => {
     const assistant = vi.fn(async () => ({
       answer: "Use the matching hand tool shown in step 2.",

@@ -32,13 +32,19 @@ describe("Meshy image-to-3D provider", () => {
     expect(url).toBe("https://api.meshy.ai/openapi/v1/image-to-3d");
     expect(JSON.parse(init.body)).toMatchObject({
       image_url: "data:image/png;base64,AAAA",
-      model_type: "smart-topology",
-      ai_model: "meshy-t2",
-      target_polycount: 15_000,
-      texture_prompt: "A visibly worn desk lamp.",
+      model_type: "standard",
+      ai_model: "meshy-7",
+      ultra_mode: true,
+      should_remesh: false,
+      image_enhancement: false,
+      texture_prompt: expect.stringContaining("A visibly worn desk lamp."),
+      should_texture: true,
+      enable_pbr: true,
+      texture_resolution: "4k",
       target_formats: ["glb"],
       moderation: true,
     });
+    expect(JSON.parse(init.body)).not.toHaveProperty("target_polycount");
   });
 
   it("maps provider states without inventing progress", async () => {
@@ -155,7 +161,7 @@ describe("Meshy failure mapping", () => {
     expect(await failure()).toMatchObject({ code: "UPSTREAM_UNAVAILABLE", recoverable: true });
   });
 
-  it("does not send image enhancement, which Meshy scopes to standard models", async () => {
+  it("disables appearance enhancement on the high-detail standard model", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValueOnce(new Response(JSON.stringify({ result: "task-9" }), { status: 200 }));
@@ -163,8 +169,13 @@ describe("Meshy failure mapping", () => {
     await provider.start(input, new AbortController().signal);
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-    expect(body).not.toHaveProperty("image_enhancement");
-    expect(body).toMatchObject({ model_type: "smart-topology", ai_model: "meshy-t2" });
+    expect(body).toMatchObject({
+      model_type: "standard",
+      ai_model: "meshy-7",
+      ultra_mode: true,
+      image_enhancement: false,
+      should_remesh: false,
+    });
   });
 });
 

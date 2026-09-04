@@ -264,6 +264,9 @@ describe("upload-first manual experience", () => {
       "src",
       "data:image/webp;base64,QUFBQQ==",
     );
+    expect(
+      screen.getByText("Check visible movement", { selector: ".repair-guide-frame strong" }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "3D model" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "View in 3D" }));

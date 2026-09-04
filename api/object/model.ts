@@ -47,9 +47,9 @@ async function startGeneration(request: Request): Promise<Response> {
   const image = validateImage(input.image);
   assertSessionBindings(session, image.sha256, input.analysis);
   const shouldNormalize =
-    !config.mockMode && (input.normalizeImage ?? image.mediaType === "image/webp");
+    !config.mockMode && (input.normalizeImage !== false || image.mediaType === "image/webp");
   const reference = shouldNormalize
-    ? await normalizeReferenceImage(image, config, request.signal)
+    ? await normalizeReferenceImage(image, input.analysis, config, request.signal)
     : image;
   if (reference.mediaType === "image/webp" && config.imageTo3dProvider === "meshy") {
     throw new ApiError(

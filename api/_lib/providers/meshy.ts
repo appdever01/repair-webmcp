@@ -142,11 +142,19 @@ export class MeshyProvider implements ImageTo3dProvider {
           },
           body: JSON.stringify({
             image_url: input.imageDataUrl,
-            model_type: "smart-topology",
-            ai_model: "meshy-t2",
-            target_polycount: 15_000,
-            texture_prompt: input.objectDescription.slice(0, 800),
+            model_type: "standard",
+            ai_model: "meshy-7",
+            ultra_mode: true,
+            should_remesh: false,
+            image_enhancement: false,
+            texture_prompt:
+              `Match the source object's exact current damaged state. Preserve visible wear, cracks, chips, holes, raw fracture surfaces, missing material, and detached pieces. Do not depict an intact, repaired, completed, smoothed, or symmetrical version. ${input.objectDescription}`.slice(
+                0,
+                800,
+              ),
             should_texture: true,
+            enable_pbr: true,
+            texture_resolution: "4k",
             moderation: true,
             target_formats: ["glb"],
           }),

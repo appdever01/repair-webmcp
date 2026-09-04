@@ -229,6 +229,7 @@ describe("OpenAI generation adapters", () => {
 
     const result = await normalizeReferenceImage(
       validateImage(pngImage()),
+      objectAnalysis(),
       config(),
       new AbortController().signal,
     );
@@ -241,14 +242,20 @@ describe("OpenAI generation adapters", () => {
       throw new Error("Expected an image edit FormData request");
     }
     expect(body.get("model")).toBe("configured-image-model");
-    expect(body.get("prompt")).toContain("Do not repair");
+    expect(body.get("quality")).toBe("high");
+    expect(body.get("output_format")).toBe("png");
+    expect(body.get("prompt")).toContain("Keep every detached piece detached");
+    expect(body.get("prompt")).toContain("Do not repair, reconnect, complete");
+    expect(body.get("prompt")).toContain("Shade fastener");
   });
 
   it("creates a compressed wireframe damage map from the original image", async () => {
     const output = webpImage(1536, 1024);
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(Response.json({ data: [{ b64_json: output.base64 }] }));
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ data: [{ b64_json: output.base64 }] })),
+      );
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -263,16 +270,17 @@ describe("OpenAI generation adapters", () => {
     expect(body).toBeInstanceOf(FormData);
     if (!(body instanceof FormData)) throw new Error("Expected image edit form data");
     expect(body.get("model")).toBe("gpt-image-2");
+    expect(body.get("quality")).toBe("high");
     expect(body.get("size")).toBe("1536x1024");
     expect(body.get("output_format")).toBe("webp");
     expect(body.get("prompt")).toContain("wireframe");
     expect(body.get("prompt")).toContain("Shade fastener");
     expect(body.get("prompt")).toContain("Never circle empty space");
-    expect(body.get("prompt")).toContain("small dark pill");
-    expect(body.get("prompt")).toContain("never headlines");
+    expect(body.get("prompt")).toContain('"DAMAGE 1: SHADE FASTENER"');
+    expect(body.get("prompt")).toContain("never headlines or paragraphs");
   });
 
-  it("creates a typography-free wireframe targeted by visible evidence", async () => {
+  it("creates a labeled, step-specific instructional frame from visible evidence", async () => {
     const output = webpImage(1536, 1024);
     const fetchMock = vi
       .fn()
@@ -292,11 +300,65 @@ describe("OpenAI generation adapters", () => {
     const body = fetchMock.mock.calls.at(0)?.[1].body;
     expect(body).toBeInstanceOf(FormData);
     if (!(body instanceof FormData)) throw new Error("Expected image edit form data");
+    expect(body.get("quality")).toBe("high");
     expect(body.get("prompt")).toContain("Check visible movement");
     expect(body.get("prompt")).toContain("Visible connection between the shade and arm");
     expect(body.get("prompt")).toContain("never mark empty space");
-    expect(body.get("prompt")).toContain("Do not render any words, letters, numbers");
+    expect(body.get("prompt")).toContain('Render exactly: "STEP 1 OF 1"');
+    expect(body.get("prompt")).toContain('Render exactly: "CHECK VISIBLE MOVEMENT"');
+    expect(body.get("prompt")).toContain("must be materially distinct from every other step");
     expect(body.get("prompt")).toContain("For an inspection step, use no motion arrow");
+  });
+
+  it("sends materially different prompts for different repair steps", async () => {
+    const output = webpImage(1536, 1024);
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ data: [{ b64_json: output.base64 }] })),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const twoStepPlan = {
+      ...repairPlan(),
+      proposedRepairPlan: [
+        {
+          title: "Tighten the visible fastener",
+          instructions: "Hold the shade and turn the exposed fastener clockwise one quarter-turn.",
+          caution: "Keep the lamp unplugged.",
+        },
+      ],
+    };
+
+    await generateRepairStepImage(
+      validateImage(pngImage(1200, 800)),
+      objectAnalysis(),
+      twoStepPlan,
+      0,
+      config({ openAiImageModel: "gpt-image-2" }),
+      new AbortController().signal,
+    );
+    await generateRepairStepImage(
+      validateImage(pngImage(1200, 800)),
+      objectAnalysis(),
+      twoStepPlan,
+      1,
+      config({ openAiImageModel: "gpt-image-2" }),
+      new AbortController().signal,
+    );
+
+    const firstBody = fetchMock.mock.calls[0]?.[1].body;
+    const secondBody = fetchMock.mock.calls[1]?.[1].body;
+    if (!(firstBody instanceof FormData) || !(secondBody instanceof FormData)) {
+      throw new Error("Expected image edit form data");
+    }
+    expect(firstBody.get("prompt")).toContain('"STEP 1 OF 2"');
+    expect(firstBody.get("prompt")).toContain("Next step, which must not be shown: Tighten");
+    expect(secondBody.get("prompt")).toContain('"STEP 2 OF 2"');
+    expect(secondBody.get("prompt")).toContain('"TIGHTEN THE VISIBLE FASTENER"');
+    expect(secondBody.get("prompt")).toContain(
+      "Previous step, which must not be shown: Check visible movement",
+    );
+    expect(firstBody.get("prompt")).not.toBe(secondBody.get("prompt"));
   });
 
   it("rejects malformed external responses without exposing them", async () => {
