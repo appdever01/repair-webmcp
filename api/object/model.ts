@@ -17,6 +17,7 @@ import {
 import { validateImage } from "../_lib/image.js";
 import { normalizeReferenceImage } from "../_lib/openai.js";
 import { createImageTo3dProvider } from "../_lib/providers/index.js";
+import { consumeSessionAction } from "../_lib/quota.js";
 import {
   assertSessionBindings,
   createJobToken,
@@ -48,6 +49,7 @@ async function startGeneration(request: Request): Promise<Response> {
   const input = await readJson(request, startModelGenerationBodySchema);
   const image = validateImage(input.image);
   assertSessionBindings(session, image.sha256, input.analysis);
+  consumeSessionAction(session.sessionId, "model");
   const shouldNormalize =
     !config.mockMode && (input.normalizeImage !== false || image.mediaType === "image/webp");
   let reference = image;

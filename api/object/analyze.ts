@@ -9,6 +9,7 @@ import {
 } from "../_lib/http.js";
 import { validateImage } from "../_lib/image.js";
 import { analyzeWithOpenAI } from "../_lib/openai.js";
+import { assertAnalysisAllowed, persistAnalysisQuota } from "../_lib/quota.js";
 import { createSessionToken } from "../_lib/token.js";
 
 export function handler(request: Request): Promise<Response> {
@@ -18,6 +19,7 @@ export function handler(request: Request): Promise<Response> {
     const config = getGenerationConfig();
     const input = await readJson(request, analyzeObjectRequestSchema);
     const image = validateImage(input.image);
+    const quota = assertAnalysisAllowed(request, config, image.sha256);
     const analysis = await analyzeWithOpenAI(
       image,
       input.problemDescription,
@@ -30,7 +32,9 @@ export function handler(request: Request): Promise<Response> {
       config.sessionSigningSecret,
       config.sessionTtlSeconds,
     );
-    return jsonResponse({ sessionToken, analysis });
+    return jsonResponse({ sessionToken, analysis }, 200, {
+      cookies: persistAnalysisQuota(request, config, image.sha256, quota),
+    });
   });
 }
 

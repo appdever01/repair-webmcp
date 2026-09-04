@@ -3,6 +3,7 @@ import {
   createJobToken,
   createPlanToken,
   createSessionToken,
+  inspectSessionToken,
   verifyJobToken,
   verifyPlanToken,
   verifySessionToken,
@@ -23,6 +24,21 @@ describe("generation signed tokens", () => {
     expect(() => assertSessionBindings(session, "different-image-hash-123456", analysis)).toThrow(
       expect.objectContaining({ code: "UNAUTHORIZED" }),
     );
+  });
+
+  it("inspects a signed session without rejecting expiry", () => {
+    const token = createSessionToken(
+      "image-hash-value-123456789",
+      objectAnalysis(),
+      SECRET,
+      10,
+      100,
+    );
+    expect(inspectSessionToken(token, SECRET)).toMatchObject({
+      imageHash: "image-hash-value-123456789",
+      kind: "session",
+    });
+    expect(inspectSessionToken(`${token.slice(0, -1)}x`, SECRET)).toBeNull();
   });
 
   it("rejects expiry and tampering", () => {

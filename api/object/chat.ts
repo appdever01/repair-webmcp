@@ -11,6 +11,7 @@ import {
 } from "../_lib/http.js";
 import { validateImage } from "../_lib/image.js";
 import { answerRepairQuestionWithOpenAI } from "../_lib/openai.js";
+import { consumeSessionAction } from "../_lib/quota.js";
 import { assertSessionBindings, verifyPlanToken, verifySessionToken } from "../_lib/token.js";
 
 export function handler(request: Request): Promise<Response> {
@@ -26,6 +27,7 @@ export function handler(request: Request): Promise<Response> {
     if (input.messages.at(-1)?.role !== "user") {
       throw new ApiError(400, "INVALID_REQUEST", "A user question is required.");
     }
+    consumeSessionAction(session.sessionId, "chat");
     const answer = await answerRepairQuestionWithOpenAI(image, input, config, request.signal);
     return jsonResponse({ answer });
   });

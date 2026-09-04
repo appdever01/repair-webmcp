@@ -1,4 +1,5 @@
 import { validateImage } from "../../api/_lib/image";
+import { resetQuotaState } from "../../api/_lib/quota";
 import { createSessionToken } from "../../api/_lib/token";
 import { handler as analyzeHandler } from "../../api/object/analyze";
 import { handler as chatHandler } from "../../api/object/chat";
@@ -24,6 +25,7 @@ function request(path: string, init: RequestInit): Request {
 
 describe("generation API mock flow", () => {
   beforeEach(() => {
+    resetQuotaState();
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("VERCEL_ENV", "development");
     vi.stubEnv("GENERATION_MOCK_MODE", "true");

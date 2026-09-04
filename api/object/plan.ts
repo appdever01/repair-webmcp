@@ -9,6 +9,7 @@ import {
   requireSameOrigin,
 } from "../_lib/http.js";
 import { planWithOpenAI } from "../_lib/openai.js";
+import { consumeSessionAction } from "../_lib/quota.js";
 import { professionalHelpPlan, requiresProfessionalHelp } from "../_lib/safety.js";
 import { assertSessionBindings, createPlanToken, verifySessionToken } from "../_lib/token.js";
 
@@ -20,6 +21,7 @@ export function handler(request: Request): Promise<Response> {
     const session = verifySessionToken(requireBearerToken(request), config.sessionSigningSecret);
     const input = await readJson(request, draftRepairPlanBodySchema);
     assertSessionBindings(session, null, input.analysis);
+    consumeSessionAction(session.sessionId, "plan");
     const plan = requiresProfessionalHelp(input.analysis)
       ? professionalHelpPlan(input.analysis)
       : await planWithOpenAI(input, config, request.signal);

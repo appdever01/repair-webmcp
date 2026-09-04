@@ -1127,6 +1127,7 @@ export function createWorkspaceStore(
                 : {}),
             },
             task.controller.signal,
+            get().sessionToken,
           );
           if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
           currentTaskController = null;
@@ -1230,6 +1231,7 @@ export function createWorkspaceStore(
                   : {}),
               },
               task.controller.signal,
+              state.sessionToken,
             );
             if (!isCurrentTask(task.sequence)) return { ok: false, code: "CANCELLED" };
             activeSessionToken = refreshed.sessionToken;

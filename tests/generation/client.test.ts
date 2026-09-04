@@ -23,8 +23,8 @@ describe("typed generation client contracts", () => {
   it("calls analyzeObject with the public request and validates its response", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(
-        Response.json({ sessionToken: SESSION_TOKEN, analysis: objectAnalysis() }),
+      .mockImplementation(() =>
+        Promise.resolve(Response.json({ sessionToken: SESSION_TOKEN, analysis: objectAnalysis() })),
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -36,7 +36,27 @@ describe("typed generation client contracts", () => {
     ).resolves.toMatchObject({ sessionToken: SESSION_TOKEN });
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/object/analyze",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await expect(
+      analyzeObject(
+        { image: pngImage(), problemDescription: "Loose shade" },
+        new AbortController().signal,
+        SESSION_TOKEN,
+      ),
+    ).resolves.toMatchObject({ sessionToken: SESSION_TOKEN });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "/api/object/analyze",
+      expect.objectContaining({
+        headers: {
+          Authorization: `Bearer ${SESSION_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      }),
     );
   });
 

@@ -12,6 +12,7 @@ import {
 } from "../_lib/http.js";
 import { validateImage } from "../_lib/image.js";
 import { generateRepairStepImage } from "../_lib/openai.js";
+import { consumeSessionAction } from "../_lib/quota.js";
 import { assertSessionBindings, verifyPlanToken, verifySessionToken } from "../_lib/token.js";
 
 export function handler(request: Request): Promise<Response> {
@@ -27,6 +28,7 @@ export function handler(request: Request): Promise<Response> {
     if (!repairGuideSteps(input.plan)[input.stepIndex]) {
       throw new ApiError(400, "INVALID_REQUEST", "The requested repair step is not available.");
     }
+    consumeSessionAction(session.sessionId, "guide");
     const visual = await generateRepairStepImage(
       image,
       input.analysis,

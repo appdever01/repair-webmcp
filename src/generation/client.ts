@@ -69,7 +69,11 @@ async function requestJson<TSchema extends z.ZodType>(
   signal.addEventListener("abort", abort, { once: true });
 
   try {
-    const response = await fetch(path, { ...init, signal: controller.signal });
+    const response = await fetch(path, {
+      ...init,
+      credentials: "same-origin",
+      signal: controller.signal,
+    });
     const json: unknown = await response.json().catch(() => null);
     if (!response.ok) {
       const parsedError = apiErrorResponseSchema.safeParse(json);
@@ -120,13 +124,17 @@ async function requestJson<TSchema extends z.ZodType>(
 export async function analyzeObject(
   input: AnalyzeObjectRequest,
   signal: AbortSignal,
+  sessionToken?: string | null,
 ): Promise<AnalyzeObjectResponse> {
   const body = analyzeObjectRequestSchema.parse(input);
   return requestJson(
     "/api/object/analyze",
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+      },
       body: JSON.stringify(body),
     },
     analyzeObjectResponseSchema,

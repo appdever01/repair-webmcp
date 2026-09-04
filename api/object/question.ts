@@ -13,6 +13,7 @@ import {
 } from "../_lib/http.js";
 import { validateImage } from "../_lib/image.js";
 import { chooseNextQuestionWithOpenAI } from "../_lib/openai.js";
+import { consumeSessionAction } from "../_lib/quota.js";
 import { requiresProfessionalHelp } from "../_lib/safety.js";
 import { assertSessionBindings, verifySessionToken } from "../_lib/token.js";
 
@@ -25,6 +26,7 @@ export function handler(request: Request): Promise<Response> {
     const input = await readJson(request, nextQuestionBodySchema);
     const image = validateImage(input.image);
     assertSessionBindings(session, image.sha256, input.analysis);
+    consumeSessionAction(session.sessionId, "question");
     const decision = requiresProfessionalHelp(input.analysis)
       ? {
           status: "ready" as const,

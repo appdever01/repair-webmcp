@@ -3,14 +3,22 @@ import { ApiError, toApiError } from "./errors.js";
 
 const MAX_JSON_BODY_BYTES = 4_300_000;
 
-export function jsonResponse(value: unknown, status = 200): Response {
+export function jsonResponse(
+  value: unknown,
+  status = 200,
+  extras?: { cookies?: readonly string[] },
+): Response {
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
+  });
+  for (const cookie of extras?.cookies ?? []) {
+    headers.append("Set-Cookie", cookie);
+  }
   return Response.json(value, {
     status,
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "application/json; charset=utf-8",
-      "X-Content-Type-Options": "nosniff",
-    },
+    headers,
   });
 }
 

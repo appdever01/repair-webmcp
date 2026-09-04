@@ -384,6 +384,12 @@ describe("dynamic workspace action layer", () => {
     });
 
     expect(analyze).toHaveBeenCalledTimes(2);
+    expect(analyze).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ image }),
+      expect.any(AbortSignal),
+      sessionToken,
+    );
     expect(startModel).toHaveBeenCalledTimes(2);
     expect(startModel).toHaveBeenLastCalledWith(
       expect.objectContaining({ sessionToken: refreshedSessionToken }),

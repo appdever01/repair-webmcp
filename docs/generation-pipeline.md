@@ -14,8 +14,10 @@ image editing](https://developers.openai.com/api/docs/guides/image-generation), 
 
 1. The browser compresses one JPEG, PNG, or WebP and calls `POST /api/object/analyze` with its
    declared media type, base64 data, and optional problem description.
-2. The API verifies the exact same origin, then checks base64, decoded size, magic bytes, declared
-   MIME type, and image dimensions.
+2. The API verifies the exact same origin, then checks the daily photo quota, base64, decoded size,
+   magic bytes, declared MIME type, and image dimensions. A browser may start two new analyses per
+   UTC day. The same photo, an expired session for that photo, and later session-bound routes do not
+   consume another slot.
 3. OpenAI Responses receives the image as a data URL and returns strict structured analysis with
    `store: false`. Image pixels, visible text, metadata, labels, and user text are explicitly treated
    as untrusted evidence rather than instructions.
@@ -69,6 +71,8 @@ Vercel environment variables rather than source control.
 | `MESHY_API_KEY` | Optional | Required only when the user requests a Meshy 3D model. |
 | `SESSION_SIGNING_SECRET` | Production | Random secret of at least 32 bytes used for session and job HMAC signatures. |
 | `SESSION_TTL_SECONDS` | Optional | Session and job lifetime. Default: 1,800 seconds. |
+| `DAILY_SESSION_LIMIT` | Optional | New photos a browser can analyze per UTC day. Default: 2. |
+| `DAILY_IP_SESSION_LIMIT` | Optional | New photos a network can analyze per UTC day when the quota cookie is missing. Default: 20. |
 | `OPENAI_TIMEOUT_MS` | Optional | Per OpenAI request timeout. Default: 120,000 ms. |
 | `IMAGE_TO_3D_TIMEOUT_MS` | Optional | Per Meshy request timeout. Default: 20,000 ms. |
 | `GENERATION_MOCK_MODE` | Local only | Replaces OpenAI and Meshy with deterministic local responses outside production. |
@@ -182,6 +186,8 @@ include:
   `IMAGE_TOO_LARGE` for rejected input.
 - `ORIGIN_NOT_ALLOWED` for request protection failures.
 - `UNAUTHORIZED` and `SESSION_EXPIRED` for invalid, mismatched, tampered, or expired state.
+- `DAILY_LIMIT_REACHED` when the browser has already started its daily new-photo sessions.
+- `RATE_LIMITED` for short burst or per-session request caps. In-progress repairs stay usable.
 - `UPSTREAM_RATE_LIMITED`, `UPSTREAM_TIMEOUT`, `UPSTREAM_UNAVAILABLE`, and
   `UPSTREAM_RESPONSE_INVALID` for sanitized provider failures.
 - `MODEL_GENERATION_FAILED` and `CANCELLED` for terminal Meshy states.

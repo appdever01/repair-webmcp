@@ -127,6 +127,15 @@ export function createSessionToken(
   );
 }
 
+export function inspectSessionToken(token: string, secret: string): SessionPayload | null {
+  try {
+    const parsed = sessionPayloadSchema.safeParse(verifyPayload(token, secret));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
 export function verifySessionToken(
   token: string,
   secret: string,

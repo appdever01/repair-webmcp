@@ -15,6 +15,8 @@ export interface GenerationConfig {
   imageTo3dProvider: "meshy" | "mock";
   meshyApiKey: string | null;
   providerTimeoutMs: number;
+  dailySessionLimit: number;
+  ipSessionLimit: number;
 }
 
 function readPositiveInteger(name: string, fallback: number, maximum: number): number {
@@ -65,5 +67,7 @@ export function getGenerationConfig(): GenerationConfig {
     imageTo3dProvider: providerName,
     meshyApiKey,
     providerTimeoutMs: readPositiveInteger("IMAGE_TO_3D_TIMEOUT_MS", 20_000, 60_000),
+    dailySessionLimit: readPositiveInteger("DAILY_SESSION_LIMIT", 2, 20),
+    ipSessionLimit: readPositiveInteger("DAILY_IP_SESSION_LIMIT", 20, 100),
   };
 }

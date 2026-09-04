@@ -24,6 +24,8 @@ function config(overrides: Partial<GenerationConfig> = {}): GenerationConfig {
     imageTo3dProvider: "meshy",
     meshyApiKey: "meshy-key",
     providerTimeoutMs: 1_000,
+    dailySessionLimit: 2,
+    ipSessionLimit: 20,
     ...overrides,
   };
 }

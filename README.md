@@ -365,7 +365,7 @@ sequenceDiagram
 
 | Method | Route | Purpose | Authorization |
 | --- | --- | --- | --- |
-| `POST` | `/api/object/analyze` | Validate and analyze the uploaded image. | Exact same-origin browser request |
+| `POST` | `/api/object/analyze` | Validate and analyze the uploaded image. | Exact same-origin browser request, two new photos per browser per day |
 | `POST` | `/api/object/diagnostic` | Generate the wireframe damage-map comparison. | Bearer session token |
 | `POST` | `/api/object/question` | Request one useful visible detail or mark the photo check ready. | Bearer session token |
 | `POST` | `/api/object/plan` | Draft a repair plan from signed analysis and the complete answer history. | Bearer session token |
@@ -391,6 +391,8 @@ OpenAI receives the image as a data URL and returns strict structured output wit
 ### Signed sessions
 
 The analysis response includes a short-lived HMAC-signed session token. The token binds the session to hashes of the image and analysis. Repair plans and provider task IDs are wrapped in separate opaque, session-bound tokens. Uploaded image bytes and provider payloads are never embedded in those tokens.
+
+Each browser can start two new repair sessions per UTC day. A session is one successful analysis of a new photo. Retrying the same photo, refreshing an expired session for that photo, and the later question, plan, guide, chat, and 3D calls stay available and do not use another daily slot. The limit is stored in a signed httpOnly cookie. Requests without that cookie use a higher same-network fallback so a shared cafe or demo network is not locked after two people. Burst limits also slow repeated analysis from the same network.
 
 ### Optional 3D generation
 
@@ -464,6 +466,8 @@ Copy `.env.example` to `.env.local` for local full-stack development. Configure 
 | `MESHY_API_KEY` | Optional 3D outside mock mode | None | Server-side Meshy credential. |
 | `SESSION_SIGNING_SECRET` | Production | Development-only fallback locally | Random signing value of at least 32 bytes in production. |
 | `SESSION_TTL_SECONDS` | No | `1800` | Session and job lifetime; maximum accepted value is 3,600 seconds. |
+| `DAILY_SESSION_LIMIT` | No | `2` | New photos a browser can analyze per UTC day; maximum accepted value is 20. |
+| `DAILY_IP_SESSION_LIMIT` | No | `20` | New photos a network can analyze per UTC day when the quota cookie is missing; maximum accepted value is 100. |
 | `OPENAI_TIMEOUT_MS` | No | `120000` | Per-request OpenAI timeout; maximum accepted value is 150,000 ms. |
 | `IMAGE_TO_3D_TIMEOUT_MS` | No | `20000` | Per-request provider timeout; maximum accepted value is 60,000 ms. |
 | `GENERATION_MOCK_MODE` | Local testing only | `false` | Enables deterministic providers outside production. Ignored in production. |
