@@ -41,6 +41,7 @@ describe("same-origin model asset route", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
   });
 
@@ -118,6 +119,35 @@ describe("same-origin model asset route", () => {
     );
   });
 
+  it("retries a completed model while its CDN file is still propagating", async () => {
+    vi.useFakeTimers();
+    const { sessionToken, jobId } = tokens();
+    const bytes = new Uint8Array([0x67, 0x6c, 0x54, 0x46, 2, 0, 0, 0]);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(meshyTask("SUCCEEDED"))
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(bytes, {
+          status: 200,
+          headers: { "Content-Type": "application/octet-stream", "Content-Length": "8" },
+        }),
+      );
+
+    const responsePromise = assetHandler(
+      request(`/api/object/asset?jobId=${encodeURIComponent(jobId)}`, {
+        Authorization: `Bearer ${sessionToken}`,
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(3_000);
+    const response = await responsePromise;
+
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
   it("refuses unauthenticated, cross-origin, unfinished, and oversized requests", async () => {
     const { sessionToken, jobId } = tokens();
     const path = `/api/object/asset?jobId=${encodeURIComponent(jobId)}`;
@@ -140,7 +170,7 @@ describe("same-origin model asset route", () => {
       .mockResolvedValueOnce(meshyTask("IN_PROGRESS", ""))
       .mockResolvedValueOnce(meshyTask("SUCCEEDED"))
       .mockResolvedValueOnce(
-        new Response("x", { status: 200, headers: { "Content-Length": "90000000" } }),
+        new Response("x", { status: 200, headers: { "Content-Length": "190000000" } }),
       );
     const pending = await assetHandler(request(path, { Authorization: `Bearer ${sessionToken}` }));
     expect(pending.status).toBe(409);

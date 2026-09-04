@@ -9,6 +9,24 @@ import { humanActionOptions, useWorkspaceStore, workspaceStore } from "../worksp
 const loadScene = () => import("../scene/RepairScene");
 const RepairScene = lazy(() => loadScene().then((module) => ({ default: module.RepairScene })));
 
+export function retryCompletedModel() {
+  const state = workspaceStore.getState();
+  if (!state.model) return;
+  const modelUrl = state.model.glbUrl;
+  void loadScene()
+    .then((module) => {
+      module.clearRepairSceneModel(modelUrl);
+      if (workspaceStore.getState().model?.glbUrl === modelUrl) {
+        workspaceStore.getState().setModelError(null);
+      }
+    })
+    .catch(() => {
+      if (workspaceStore.getState().model?.glbUrl === modelUrl) {
+        workspaceStore.getState().setModelError("The 3D viewer could not be loaded.");
+      }
+    });
+}
+
 class ModelBoundary extends Component<
   { children: ReactNode; modelKey: string; onFailure: () => void },
   { failed: boolean }
@@ -381,11 +399,7 @@ function ModelLoadFailure() {
       <strong>Your model is ready, but the viewer could not load it</strong>
       <p>{state.modelError ?? "The completed model file could not be displayed."}</p>
       <div className="model-load-actions">
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => workspaceStore.getState().setModelError(null)}
-        >
+        <button type="button" className="primary-button" onClick={retryCompletedModel}>
           <RepairIcon name="reset" /> Retry loading model
         </button>
         <button
@@ -445,7 +459,7 @@ export function VisualWorkspace() {
     workspaceStore.getState().setVisualMode("model");
     const next = workspaceStore.getState();
     if (next.model && next.modelError) {
-      next.setModelError(null);
+      retryCompletedModel();
       return;
     }
     if (

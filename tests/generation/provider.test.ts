@@ -40,7 +40,7 @@ describe("Meshy image-to-3D provider", () => {
       texture_prompt: expect.stringContaining("A visibly worn desk lamp."),
       should_texture: true,
       enable_pbr: true,
-      texture_resolution: "4k",
+      texture_resolution: "2k",
       target_formats: ["glb"],
       moderation: true,
     });

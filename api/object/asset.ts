@@ -10,8 +10,9 @@ import {
 import { createImageTo3dProvider } from "../_lib/providers/index.js";
 import { verifyJobToken, verifySessionToken } from "../_lib/token.js";
 
-const MAX_MODEL_BYTES = 80_000_000;
-const MODEL_FETCH_TIMEOUT_MS = 60_000;
+const MAX_MODEL_BYTES = 160_000_000;
+const MODEL_FETCH_TIMEOUT_MS = 15_000;
+const MODEL_FETCH_RETRY_DELAYS_MS = [0, 750, 2_000] as const;
 const DATA_GLB_PREFIX = "data:model/gltf-binary;base64,";
 
 function modelHeaders(length: number | null): HeadersInit {
@@ -23,30 +24,59 @@ function modelHeaders(length: number | null): HeadersInit {
   };
 }
 
+function waitForRetry(milliseconds: number, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const finish = () => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    };
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal.reason ?? new DOMException("The request was cancelled.", "AbortError"));
+    };
+    const timer = setTimeout(finish, milliseconds);
+    signal.addEventListener("abort", abort, { once: true });
+  });
+}
+
 async function fetchModel(glbUrl: string, signal: AbortSignal): Promise<Response> {
-  let upstream: Response;
-  try {
-    upstream = await fetchWithTimeout(
-      glbUrl,
-      { headers: { Accept: "model/gltf-binary, application/octet-stream" } },
-      MODEL_FETCH_TIMEOUT_MS,
-      signal,
-    );
-  } catch (error) {
-    if (error instanceof ApiError || signal.aborted) {
-      throw error;
+  for (let attempt = 0; attempt < MODEL_FETCH_RETRY_DELAYS_MS.length; attempt += 1) {
+    const delay = MODEL_FETCH_RETRY_DELAYS_MS[attempt] ?? 0;
+    if (delay > 0) await waitForRetry(delay, signal);
+    let upstream: Response;
+    try {
+      upstream = await fetchWithTimeout(
+        glbUrl,
+        { headers: { Accept: "model/gltf-binary, application/octet-stream" } },
+        MODEL_FETCH_TIMEOUT_MS,
+        signal,
+      );
+    } catch (error) {
+      if (signal.aborted) throw error;
+      if (attempt < MODEL_FETCH_RETRY_DELAYS_MS.length - 1) continue;
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(502, "UPSTREAM_UNAVAILABLE", "The 3D model file is not reachable.", true);
     }
-    throw new ApiError(502, "UPSTREAM_UNAVAILABLE", "The 3D model file is not reachable.", true);
+    if (upstream.ok && upstream.body) {
+      const declaredLength = Number(upstream.headers.get("content-length"));
+      const length = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
+      if (length !== null && length > MAX_MODEL_BYTES) {
+        await upstream.body.cancel();
+        throw new ApiError(502, "UPSTREAM_RESPONSE_INVALID", "The 3D model file is too large.");
+      }
+      return new Response(upstream.body, { status: 200, headers: modelHeaders(length) });
+    }
+    const retryable =
+      upstream.status === 404 ||
+      upstream.status === 408 ||
+      upstream.status === 425 ||
+      upstream.status === 429 ||
+      upstream.status >= 500;
+    await upstream.body?.cancel();
+    if (!retryable || attempt === MODEL_FETCH_RETRY_DELAYS_MS.length - 1) break;
   }
-  if (!upstream.ok || !upstream.body) {
-    throw new ApiError(502, "UPSTREAM_UNAVAILABLE", "The 3D model file is not reachable.", true);
-  }
-  const declaredLength = Number(upstream.headers.get("content-length"));
-  const length = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : null;
-  if (length !== null && length > MAX_MODEL_BYTES) {
-    throw new ApiError(502, "UPSTREAM_RESPONSE_INVALID", "The 3D model file is too large.");
-  }
-  return new Response(upstream.body, { status: 200, headers: modelHeaders(length) });
+  throw new ApiError(502, "UPSTREAM_UNAVAILABLE", "The 3D model file is not reachable.", true);
 }
 
 export function handler(request: Request): Promise<Response> {

@@ -9,6 +9,7 @@ vi.mock("../../src/scene/quality", async (importOriginal) => {
 });
 
 vi.mock("../../src/scene/RepairScene", () => ({
+  clearRepairSceneModel: vi.fn(),
   RepairScene: () => {
     throw new Error("Remote model blocked by CORS");
   },
@@ -16,6 +17,7 @@ vi.mock("../../src/scene/RepairScene", () => ({
 
 import { RepairGuidance } from "../../src/bench/RepairGuidance";
 import { VisualWorkspace } from "../../src/bench/VisualWorkspace";
+import { clearRepairSceneModel } from "../../src/scene/RepairScene";
 
 const analysis: ObjectAnalysis = {
   objectName: "Desk fan",
@@ -65,6 +67,7 @@ const guidePlan: RepairPlan = {
 
 describe("3D model fallback", () => {
   beforeEach(() => {
+    vi.mocked(clearRepairSceneModel).mockClear();
     workspaceStore.getState().reset();
     workspaceStore.setState({
       analysis,
@@ -148,6 +151,7 @@ describe("3D model fallback", () => {
       ).toBeInTheDocument(),
     );
     expect(regenerate).not.toHaveBeenCalled();
+    expect(clearRepairSceneModel).toHaveBeenCalledWith("https://assets.example/model.glb");
     expect(workspaceStore.getState().model).not.toBeNull();
 
     regenerate.mockRestore();

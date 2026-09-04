@@ -4,7 +4,7 @@ import { supportsWebGL } from "../scene/quality";
 import { humanActionOptions, useWorkspaceStore, workspaceStore } from "../workspace";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { RepairGuidance } from "./RepairGuidance";
-import { RepairGuideVisual, VisualWorkspace } from "./VisualWorkspace";
+import { RepairGuideVisual, retryCompletedModel, VisualWorkspace } from "./VisualWorkspace";
 
 export function RepairWorkspace() {
   const state = useWorkspaceStore((current) => current);
@@ -46,7 +46,7 @@ export function RepairWorkspace() {
               workspaceStore.getState().setVisualMode("model");
               const next = workspaceStore.getState();
               if (next.model && next.modelError) {
-                next.setModelError(null);
+                retryCompletedModel();
                 return;
               }
               if (

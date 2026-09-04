@@ -17,6 +17,10 @@ export interface SceneCommand {
   type: "rotate-left" | "rotate-right" | "zoom-in" | "zoom-out" | "reset";
 }
 
+export function clearRepairSceneModel(modelUrl: string) {
+  useGLTF.clear(modelUrl);
+}
+
 function GeneratedModel({
   modelUrl,
   exploded,
