@@ -38,14 +38,15 @@ test("registers stage-aware tools on document.modelContext and executes them", a
 
   const opened = await execute(page, "open_image_uploader", { expectedStateVersion: 0 });
   expect(opened).toMatchObject({
-    ok: true,
+    ok: false,
+    code: "HUMAN_ACTION_REQUIRED",
     stateVersion: 1,
     affectedTarget: { id: "image-uploader" },
   });
   await expect(page.getByRole("button", { name: /Assistant/ })).toHaveText(/3 actions/);
   await expect(page.getByText("Assistant ready.", { exact: false })).toBeVisible();
   await expect(
-    page.getByText("Image uploader was updated in the visible workspace."),
+    page.getByText("The uploader is ready on the page. Press Enter or click it to choose a photo."),
   ).toBeVisible();
   expect(await toolNames(page)).toEqual([
     "get_workspace_state",

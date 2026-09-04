@@ -94,7 +94,7 @@ describe("visible agent invocation activity", () => {
     await runtime.dispose();
   });
 
-  it("shows a successful visible change for a guided demo mutation", async () => {
+  it("shows the human handoff after preparing the image uploader", async () => {
     const user = userEvent.setup();
     const store = createWorkspaceStore(unusedServices());
     const runtime = createAgentRuntime(createWorkspaceController(store), undefined);
@@ -110,9 +110,11 @@ describe("visible agent invocation activity", () => {
     await user.click(screen.getByRole("tab", { name: /Activity/ }));
 
     expect(await screen.findByText("Preview")).toBeInTheDocument();
-    expect(screen.getByText("succeeded")).toBeInTheDocument();
+    expect(screen.getByText("failed")).toBeInTheDocument();
     expect(
-      screen.getByText("Image uploader was updated in the visible workspace."),
+      screen.getByText(
+        "The uploader is ready on the page. Press Enter or click it to choose a photo.",
+      ),
     ).toBeInTheDocument();
     expect(store.getState().uploaderPromptVisible).toBe(true);
     await runtime.dispose();

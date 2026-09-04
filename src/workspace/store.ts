@@ -1023,10 +1023,11 @@ export function createWorkspaceStore(
         commit({
           uploaderFocusRequest: get().uploaderFocusRequest + 1,
           uploaderPromptVisible: true,
-          announcement: "The image picker is open. Choose a photo to continue.",
-          reversibleActivity: reversible("Opened the image uploader", previous),
+          announcement:
+            "The photo uploader is ready. Press Enter or click the highlighted area to choose a photo.",
+          reversibleActivity: reversible("Prepared the image uploader", previous),
         });
-        return { ok: true };
+        return { ok: false, code: "HUMAN_ACTION_REQUIRED" };
       },
       async analyzeUploadedObject(options) {
         const state = get();

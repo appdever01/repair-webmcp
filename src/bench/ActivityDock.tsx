@@ -40,6 +40,9 @@ function connectionStatus(activity: ReturnType<typeof useAgentActivityStore>) {
 }
 
 function visibleChange(event: AgentActivityEvent) {
+  if (event.phase === "failed" && event.resultSummary?.code === "HUMAN_ACTION_REQUIRED") {
+    return "The uploader is ready on the page. Press Enter or click it to choose a photo.";
+  }
   if (event.phase === "failed" || event.phase === "cancelled")
     return "No workspace change was kept.";
   if (event.phase !== "succeeded") return "The requested change is in progress.";

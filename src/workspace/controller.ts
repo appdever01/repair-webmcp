@@ -44,21 +44,11 @@ function options(context: WorkspaceActionContext) {
   } as const;
 }
 
-function openImagePicker() {
-  if (typeof document === "undefined") return;
-  const input = document.getElementById("object-photo");
-  if (input instanceof HTMLInputElement && input.type === "file") input.click();
-}
-
 export function createWorkspaceController(store: WorkspaceStore): WorkspaceController {
   return {
     getSnapshot: () => snapshot(store),
     subscribe: (listener) => store.subscribe(listener),
-    openImageUploader: (context) => {
-      const result = store.getState().openImageUploader(options(context));
-      if (result.ok) openImagePicker();
-      return result;
-    },
+    openImageUploader: (context) => store.getState().openImageUploader(options(context)),
     analyzeUploadedObject: (context) => store.getState().analyzeUploadedObject(options(context)),
     start3DGeneration: (context) => store.getState().start3DGeneration(options(context)),
     refreshGenerationStatus: (context) =>

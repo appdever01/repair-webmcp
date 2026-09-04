@@ -16,7 +16,7 @@ describe("WebMCP image uploader", () => {
     workspaceStore.getState().reset();
   });
 
-  it("opens the native image picker when the site tool is called", async () => {
+  it("focuses the uploader and requests the browser-required human gesture", async () => {
     const modelContext = new ModelContextMock();
     const runtime = createAgentRuntime(createWorkspaceController(workspaceStore), modelContext);
     render(<IntakePanel />);
@@ -31,13 +31,18 @@ describe("WebMCP image uploader", () => {
       });
     });
 
-    await waitFor(() => expect(openPicker).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Drop or paste your photo/ })).toHaveFocus(),
+    );
+    expect(openPicker).not.toHaveBeenCalled();
     expect(result).toMatchObject({
-      ok: true,
+      ok: false,
       source: "webmcp",
-      summary: expect.stringContaining("Opened the image picker"),
+      code: "HUMAN_ACTION_REQUIRED",
+      message: expect.stringContaining("press Enter or click"),
+      affectedTarget: { id: "image-uploader" },
     });
-    expect(screen.getByText(/Assistance opened the image picker/)).toBeInTheDocument();
+    expect(screen.getByText(/The uploader is ready/)).toBeInTheDocument();
     expect(workspaceStore.getState().image).toBeNull();
     await runtime.dispose();
   });

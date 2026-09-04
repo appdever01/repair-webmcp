@@ -139,6 +139,7 @@ export function IntakePanel() {
               className="upload-surface"
               data-dragging={dragging}
               data-prompted={state.uploaderPromptVisible}
+              aria-describedby={state.uploaderPromptVisible ? "image-uploader-handoff" : undefined}
               onClick={() => inputRef.current?.click()}
               onDragEnter={(event) => {
                 event.preventDefault();
@@ -164,9 +165,9 @@ export function IntakePanel() {
               )}
             </button>
             {state.uploaderPromptVisible && (
-              <p className="agent-prompt-note">
-                <RepairIcon name="agent" /> Assistance opened the image picker. Choose the image
-                yourself.
+              <p id="image-uploader-handoff" className="agent-prompt-note" role="status">
+                <RepairIcon name="agent" /> The uploader is ready. Press Enter or choose the
+                highlighted area to select a photo.
               </p>
             )}
             {selectionError && (

@@ -2630,13 +2630,20 @@ details.compact-plan-details > summary {
 }
 
 .activity-panel {
-  max-height: min(70vh, 650px);
+  position: fixed;
+  top: clamp(16px, 2.5vw, 34px);
+  right: clamp(16px, 2.5vw, 38px);
+  bottom: calc(clamp(16px, 2.5vw, 34px) + 62px);
+  width: min(440px, calc(100vw - 32px));
+  max-height: none;
   overflow: auto;
-  margin-bottom: 10px;
+  margin: 0;
   padding: 22px;
   border: 1px solid var(--steel-bright);
   border-radius: 16px;
   background: rgb(17 20 21 / 0.98);
+  box-shadow: -18px 0 48px rgb(0 0 0 / 0.28);
+  overscroll-behavior: contain;
 }
 
 .assistant-tabs {
@@ -3270,11 +3277,13 @@ details.compact-plan-details > summary {
   .analysis-heading {
     flex-direction: column;
   }
+}
 
+@media (max-width: 420px) {
   .activity-dock {
-    position: static;
-    width: min(100% - 24px, 1480px);
-    margin: 0 auto 24px;
+    right: 12px;
+    bottom: 12px;
+    width: calc(100vw - 24px);
   }
 
   .activity-toggle {
@@ -3283,13 +3292,13 @@ details.compact-plan-details > summary {
   }
 
   .activity-panel {
-    max-height: none;
-    margin-top: 10px;
-    margin-bottom: 0;
+    top: 12px;
+    right: 12px;
+    bottom: 74px;
+    width: calc(100vw - 24px);
+    padding: 16px;
   }
-}
 
-@media (max-width: 420px) {
   .upload-card,
   .guidance-panel {
     padding: 16px;

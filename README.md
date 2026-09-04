@@ -254,7 +254,7 @@ The runtime always begins with a read operation and registers additional tools o
 | Tool | Type | Available when | Result |
 | --- | --- | --- | --- |
 | `get_workspace_state` | Read-only | Always | Returns a bounded public snapshot, state version, and currently available tools. |
-| `open_image_uploader` | Mutation | No image or task is active | Opens the image picker; the person must choose the file. |
+| `open_image_uploader` | Mutation | No image or task is active | Focuses the uploader and returns `HUMAN_ACTION_REQUIRED`; the person presses Enter or clicks to open the system picker. |
 | `analyze_uploaded_object` | Mutation | A person-selected image is ready | Starts image analysis. |
 | `start_3d_generation` | Mutation | Analysis exists and generation is idle, failed, or cancelled | Starts an optional cancellable model task. |
 | `get_generation_status` | Mutation | Generation is queued or processing | Refreshes the visible provider status. |

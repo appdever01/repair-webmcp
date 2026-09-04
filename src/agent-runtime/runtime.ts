@@ -50,7 +50,7 @@ const errorMessages: Record<WorkspaceActionErrorCode, string> = {
 
 const successMessages: Record<AgentToolName, string> = {
   get_workspace_state: "Read the current visible workspace state.",
-  open_image_uploader: "Opened the image picker. The person must choose the local image.",
+  open_image_uploader: "Prepared the image uploader for the person.",
   analyze_uploaded_object: "Started analysis of the person-selected image.",
   start_3d_generation: "Started the 3D generation task.",
   get_generation_status: "Refreshed the visible generation status.",
@@ -523,7 +523,20 @@ export function createAgentRuntime(
       const after = controller.getSnapshot();
       const afterVersion = snapshotVersion(after);
       if (!result.ok) {
-        const toolResult = errorResult(result.code, afterVersion, source);
+        const toolResult =
+          result.code === "HUMAN_ACTION_REQUIRED"
+            ? boundedToolResult({
+                ok: false,
+                source,
+                code: result.code,
+                stateVersion: afterVersion,
+                message:
+                  "The uploader is focused and ready. The person must press Enter or click it to open the system image picker.",
+                ...(target ? { affectedTarget: target } : {}),
+                availableTools: selectAvailableAgentTools(after),
+                allowedNext: ["get_workspace_state"],
+              })
+            : errorResult(result.code, afterVersion, source);
         return terminal(
           result.code === "CANCELLED" ? "cancelled" : "failed",
           toolResult,
